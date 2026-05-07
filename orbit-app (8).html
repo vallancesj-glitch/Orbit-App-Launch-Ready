@@ -1,0 +1,1623 @@
+<!DOCTYPE ht
+          {tab==="sync"&&(
+            <>
+              <div className="sec"><span className="sec-t">Google Drive Sync</span><div className="sec-line"/></div>
+
+              {!gToken&&gSetupStep!==1&&(
+                <div className="sync-card">
+                  <div className="sync-title">Sync across devices</div>
+                  <div className="sync-sub">Connect Google Drive to save your tasks, habits and data automatically. Opens on any device — phone, laptop, anywhere.</div>
+                  {gFileId&&<div style={{fontSize:11,color:"var(--ink3)",marginBottom:10}}>Existing sync file found — connect to load your data.</div>}
+                  <button className="sync-btn" onClick={()=>setGSetupStep(1)}>Connect Google Drive</button>
+                </div>
+              )}
+
+              {gSetupStep===1&&!gToken&&(
+                <div className="sync-card">
+                  <div className="sync-title">One-time setup (5 mins)</div>
+                  <div className="sync-sub" style={{marginBottom:14}}>Follow these steps once only:</div>
+                  {[
+                    "Go to console.cloud.google.com and sign in",
+                    "Create a project, search Google Drive API, Enable it",
+                    "APIs & Services > Credentials > Create OAuth 2.0 Client ID > Web application",
+                    "Add your app URL to Authorised JavaScript origins AND redirect URIs",
+                    "Copy the Client ID and paste below"
+                  ].map((step,i)=>(
+                    <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"7px 0",borderBottom:"1px solid var(--line)",fontSize:12,color:"var(--ink2)",lineHeight:1.6}}>
+                      <span style={{width:20,height:20,borderRadius:"50%",background:"var(--accent)",color:"#1A1410",fontSize:10,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2}}>{i+1}</span>
+                      <span>{step}</span>
+                    </div>
+                  ))}
+                  <div style={{display:"flex",gap:8,marginTop:14,alignItems:"center"}}>
+                    <input className="form-input" placeholder="Paste Google Client ID..." value={gClientIdInput||""} onChange={e=>setGClientIdInput&&setGClientIdInput(e.target.value)}/>
+                    <button className="form-btn" onClick={()=>{if(gClientIdInput){setGClientId(gClientIdInput);setTimeout(()=>gLogin(),100);}}} style={{whiteSpace:"nowrap"}}>Connect</button>
+                  </div>
+                  <button style={{marginTop:10,background:"none",border:"none",fontSize:11,color:"var(--ink3)",cursor:"pointer"}} onClick={()=>setGSetupStep(0)}>Cancel</button>
+                </div>
+              )}
+
+              {gToken&&(
+                <div className="sync-card" style={{border:"1px solid rgba(125,191,142,.3)"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                    <span style={{fontSize:22}}>☁️</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700,fontSize:13,color:"var(--ink)"}}>Google Drive connected</div>
+                      {gSyncTime&&<div style={{fontSize:10,color:"var(--ink3)"}}>Last synced: {gSyncTime}</div>}
+                    </div>
+                    {gSyncStatus==="saved"&&<span style={{fontSize:10,fontWeight:700,color:"var(--green)"}}>Saved</span>}
+                    {gSyncStatus==="loaded"&&<span style={{fontSize:10,fontWeight:700,color:"var(--green)"}}>Loaded</span>}
+                    {gSyncStatus==="error"&&<span style={{fontSize:10,fontWeight:700,color:"var(--red)"}}>Error</span>}
+                  </div>
+                  <button className="sync-btn" onClick={()=>gSave()} disabled={gSyncing}>{gSyncing?"Saving...":"Save to Drive"}</button>
+                  <button className="sync-btn secondary" style={{marginTop:8}} onClick={()=>gLoad()} disabled={gSyncing}>{gSyncing?"Loading...":"Load from Drive"}</button>
+                  <button className="sync-btn danger" style={{marginTop:8}} onClick={()=>{setGToken(null);setGSetupStep(0);}}>Disconnect</button>
+                </div>
+              )}
+
+              <div className="sec" style={{marginTop:20}}><span className="sec-t">PIN Security</span><div className="sec-line"/></div>
+              <div className="sync-card">
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,padding:"10px 12px",background:"rgba(125,191,142,.1)",border:"1px solid rgba(125,191,142,.3)",borderRadius:8}}>
+                  <span style={{fontSize:20}}>🛡️</span>
+                  <div><div style={{fontSize:12,fontWeight:700,color:"var(--green)"}}>AES-256 Encryption Active</div>
+                  <div style={{fontSize:11,color:"var(--ink3)",marginTop:2}}>All data encrypted with your PIN — completely unreadable without it.</div></div>
+                </div>
+                <div className="sync-title">PIN Lock</div>
+                <div className="sync-sub">Write your PIN down somewhere safe — forgetting it means encrypted data cannot be recovered.</div>
+                <button className="sync-btn secondary" onClick={()=>{setPinState("setup1");setPinInput("");setPinConfirm("");setPinError("");}}>Change PIN</button>
+                <button className="sync-btn danger" style={{marginTop:8}} onClick={resetPin}>Reset PIN</button>
+              </div>
+
+              <div className="sync-card" style={{marginTop:12}}>
+                <div className="sync-title">Recovery Email</div>
+                <div className="sync-sub">Add a recovery email for PIN hints if you forget. Your actual PIN is never stored or sent.</div>
+                <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+                  <input className="form-input" style={{flex:1}} placeholder="your@email.com"
+                    value={recoveryEmail} onChange={e=>setRecoveryEmail(e.target.value)}/>
+                  <button className="form-btn" onClick={()=>lss("orb_recovery_email",recoveryEmail)}>Save</button>
+                </div>
+                {recoveryEmail&&<div style={{fontSize:11,color:"var(--green)",fontWeight:600}}>Recovery email saved</div>}
+              </div>
+
+              <div className="sync-card" style={{marginTop:12}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div>
+                    <div className="sync-title" style={{marginBottom:3}}>Weekend Mode</div>
+                    <div className="sync-sub" style={{marginBottom:0}}>Hides work reminders on Sat & Sun so you can switch off.</div>
+                  </div>
+                  <button className={"toggle-track"+(weekendMode?" on":"")} onClick={()=>{setWeekendMode(v=>!v);lss("orb_weekend",!weekendMode);}}>
+                    <div className="toggle-thumb"/>
+                  </button>
+                </div>
+              </div>
+
+              <div className="sync-card" style={{marginTop:12}}>
+                <div className="sync-title">Data Backup</div>
+                <div className="sync-sub">Download all your data as a backup file.</div>
+                <button className="sync-btn" onClick={()=>{
+                  const data={tasks,habits,meds,people,goals,journal,notes,logbook,exportedAt:new Date().toISOString()};
+                  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+                  const url=URL.createObjectURL(blob);
+                  const a=document.createElement("a");a.href=url;a.download="orbit-backup.json";a.click();
+                  URL.revokeObjectURL(url);
+                }}>Download backup</button>
+              </div>
+            </>
+          )}
+
+          {tab==="review"&&(
+            <div className="rcard">
+              <div style={{fontFamily:"'Instrument Serif',serif",fontSize:18,fontWeight:700,color:"#F0EDE8",marginBottom:4}}>End-of-Day Review</div>
+              <div style={{fontSize:10,color:"#686068",marginBottom:14,fontWeight:600,letterSpacing:.5,textTransform:"uppercase"}}>5pm check-in · plan tomorrow · carry forward</div>
+              <div style={{fontSize:8,fontWeight:700,letterSpacing:2,textTransform:"uppercase",color:"#686068",marginBottom:5,marginTop:14}}>Unfinished Today</div>
+              {todoTasks.length===0
+                ?<div style={{fontSize:13,color:"#686068",fontStyle:"italic"}}>Everything done! 🎉</div>
+                :todoTasks.map(t=>(
+                  <div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:"1px solid rgba(255,255,255,0.07)",fontSize:13,fontWeight:600,color:"#F0EDE8"}}>
+                    <span style={{flex:1}}>{t.title}</span>
+                    <button style={{fontSize:9,fontWeight:700,padding:"3px 9px",borderRadius:5,background:"rgba(255,190,152,0.2)",border:"1px solid rgba(255,190,152,0.4)",color:"#FFBE98",cursor:"pointer",whiteSpace:"nowrap"}}
+                      onClick={()=>setTasks(p=>p.map(x=>x.id===t.id?{...x,carryCount:(x.carryCount||0)+1}:x))}>
+                      Carry x{(t.carryCount||0)+1}
+                    </button>
+                  </div>
+                ))
+              }
+              <div style={{fontSize:8,fontWeight:700,letterSpacing:2,textTransform:"uppercase",color:"#686068",marginBottom:5,marginTop:14}}>Plan for Tomorrow</div>
+              <input style={{width:"100%",fontFamily:"'Inter',sans-serif",fontSize:13,fontWeight:600,padding:"9px 11px",borderRadius:7,border:"none",background:"rgba(255,255,255,0.08)",color:"#F0EDE8",outline:"none",marginBottom:8}}
+                placeholder="Add a priority task for tomorrow..."
+                onKeyDown={e=>{if(e.key==="Enter"&&e.target.value.trim()){addTask(e.target.value,"work","should");e.target.value="";}}}/>
+              <button onClick={()=>sendMailto(tasks)} style={{width:"100%",marginTop:8,padding:"10px",background:dark?"#1E2E44":"#E8EEF8",color:dark?"#6AAAF0":"#1E40AF",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                Email today's task list
+              </button>
+            </div>
+          )}
+ml>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="ORBIT"/>
+  <style>:root{color-scheme:light dark;}input,select,textarea{font-family:inherit;}</style>
+  <title>ORBIT — Your ADHD Companion</title>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:#F4F2F0;font-family:Inter,sans-serif;-webkit-font-smoothing:antialiased;}
+    #root{min-height:100vh;}
+    @keyframes fadein{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes cffall{0%{transform:translateY(-20px) rotate(0);opacity:1}100%{transform:translateY(80px) rotate(400deg);opacity:0}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+    @keyframes streakpop{0%{transform:scale(1)}50%{transform:scale(1.25)}100%{transform:scale(1)}}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useMemo} = React;
+
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+const AREAS = {
+  personal: {label:"Personal",  icon:"🏠", color:"#6B8CBA"},
+  work:     {label:"Work",      icon:"💼", color:"#FFBE98"},
+  health:   {label:"Health",    icon:"💚", color:"#7DBF8E"},
+  finance:  {label:"Finance",   icon:"💰", color:"#C9A84C"},
+  relations:{label:"People",    icon:"👥", color:"#E07A8F"},
+};
+
+const MOODS = [
+  {id:"amazing",  label:"amazing",  emoji:"🌟", color:"#F28C3A"},
+  {id:"good",     label:"good",     emoji:"😊", color:"#7DBF8E"},
+  {id:"okay",     label:"okay",     emoji:"😐", color:"#6B8CBA"},
+  {id:"low",      label:"low",      emoji:"😔", color:"#9095A0"},
+  {id:"anxious",  label:"anxious",  emoji:"😰", color:"#C97AA6"},
+  {id:"excited",  label:"excited",  emoji:"🤩", color:"#FFBE98"},
+  {id:"tired",    label:"tired",    emoji:"😴", color:"#9095A0"},
+  {id:"focused",  label:"focused",  emoji:"🎯", color:"#6B8CBA"},
+];
+
+const ENERGY = [
+  {id:"high",  label:"High",  emoji:"⚡", color:"#FFBE98"},
+  {id:"medium",label:"Medium",emoji:"🔆", color:"#C9A84C"},
+  {id:"low",   label:"Low",   emoji:"🌙", color:"#6B8CBA"},
+];
+
+const DAYS_S = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const PRIO_ORDER = ["must","should","want","later"];
+const PRIO_ARROWS = {must:"↑↑",should:"↑",want:"",later:""};
+const PRIO_COLORS = {must:"#E8A882",should:"#C9A84C",want:"#7DBF8E",later:"#9095A0"};
+
+let _id = Date.now();
+const uid = () => String(++_id);
+const ls  = (k,d) => { try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;} };
+const lss = (k,v) => { try{localStorage.setItem(k,JSON.stringify(v));}catch{} };
+const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+const todayKey = () => { const d=new Date(); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
+const daysSince = ts => Math.floor((Date.now()-ts)/86400000);
+
+const CONF = ["#FFBE98","#E8A882","#7DBF8E","#6B8CBA","#C97AA6","#C9A84C"];
+function confetti(x,y){
+  for(let i=0;i<14;i++){
+    const el=document.createElement("div");
+    el.style.cssText=`position:fixed;width:8px;height:8px;border-radius:2px;pointer-events:none;z-index:9999;left:${x+(Math.random()-.5)*55}px;top:${y-10}px;background:${CONF[Math.floor(Math.random()*CONF.length)]};animation:cffall .9s ${Math.random()*.35}s forwards;`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),1300);
+  }
+}
+
+// SEED DATA
+const INIT_TASKS = [
+  {id:uid(),title:"Prepare client proposal",area:"work",priority:"must",done:false,started:false,note:"",mins:60,added:Date.now()-3*86400000,carryCount:0,nw:true},
+  {id:uid(),title:"Review bank statements",area:"finance",priority:"must",done:false,started:false,note:"",mins:30,added:Date.now()-5*86400000,carryCount:1,nw:false},
+  {id:uid(),title:"Book dentist appointment",area:"health",priority:"should",done:false,started:false,note:"",mins:10,added:Date.now()-8*86400000,carryCount:0,nw:true},
+  {id:uid(),title:"Call mum",area:"relations",priority:"should",done:false,started:false,note:"",mins:20,added:Date.now()-12*86400000,carryCount:2,nw:false},
+  {id:uid(),title:"Tidy desk",area:"personal",priority:"should",done:false,started:false,note:"",mins:15,added:Date.now()-2*86400000,carryCount:0,nw:false},
+  {id:uid(),title:"Read new book",area:"personal",priority:"want",done:false,started:false,note:"",mins:30,added:Date.now()-86400000,carryCount:0,nw:false},
+  {id:uid(),title:"Research pension options",area:"finance",priority:"want",done:false,started:false,note:"",mins:45,added:Date.now()-20*86400000,carryCount:3,nw:false},
+];
+
+const INIT_HABITS = [
+  {id:"h1",title:"Morning vitamins",emoji:"💊",color:"#FFBE98",streak:4,history:[1,1,1,0,1,1],doneToday:false},
+  {id:"h2",title:"Drink 8 glasses of water",emoji:"💧",color:"#6B8CBA",streak:7,history:[1,1,1,1,1,1],doneToday:false},
+  {id:"h3",title:"10 mins mindfulness",emoji:"🧘",color:"#C97AA6",streak:2,history:[0,1,0,1,1,0],doneToday:false},
+  {id:"h4",title:"Evening walk",emoji:"🚶",color:"#7DBF8E",streak:5,history:[1,1,0,1,1,1],doneToday:false},
+];
+
+const INIT_GOALS = [
+  {id:"g1",area:"work",title:"Land 3 new clients",progress:40,deadline:Date.now()+30*86400000},
+  {id:"g2",area:"health",title:"Run 5K",progress:65,deadline:Date.now()+14*86400000},
+];
+
+const INIT_PEOPLE = [
+  {id:"p1",name:"Mum",emoji:"👩",lastContact:Date.now()-8*86400000,frequency:7},
+  {id:"p2",name:"Best friend",emoji:"👫",lastContact:Date.now()-16*86400000,frequency:14},
+  {id:"p3",name:"Business partner",emoji:"🤝",lastContact:Date.now()-4*86400000,frequency:7},
+];
+
+const INIT_MEDS = [
+  {id:"m1",title:"Morning vitamins",time:"08:00",emoji:"☀️",taken:false,note:"With breakfast"},
+  {id:"m2",title:"Omega 3",time:"08:00",emoji:"🐟",taken:false,note:""},
+  {id:"m3",title:"Evening supplement",time:"21:00",emoji:"🌙",taken:false,note:"Before bed"},
+];
+
+// ─── CSS ──────────────────────────────────────────────────────────────────────
+const makeCSS = dark => `
+:root{
+  --bg:       ${dark?"#18181C":"#F4F2F0"};
+  --bg2:      ${dark?"#1E1E24":"#ECEAE7"};
+  --surface:  ${dark?"#25252C":"#FFFFFF"};
+  --surface2: ${dark?"#2C2C35":"#F4F2EF"};
+  --surface3: ${dark?"#33333D":"#ECEAE7"};
+  --ink:      ${dark?"#F0EDE8":"#1A1410"};
+  --ink2:     ${dark?"#A09898":"#6A6058"};
+  --ink3:     ${dark?"#686068":"#9A9088"};
+  --line:     ${dark?"#2E2E38":"#E0DCD8"};
+  --accent:   #FFBE98;
+  --accent-d: #E8A070;
+  --blue:     #4A8CDB;
+  --green:    #7DBF8E;
+  --red:      #E07A6F;
+  --sidebar-w:244px;
+  --r:        12px;
+  --shadow:   ${dark?"0 2px 12px rgba(0,0,0,.45)":"0 2px 12px rgba(0,0,0,.06)"};
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);font-family:Inter,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;}
+
+.app{display:flex;min-height:100vh;max-width:1100px;margin:0 auto;}
+
+/* SIDEBAR */
+.sidebar{width:var(--sidebar-w);flex-shrink:0;background:var(--bg2);border-right:1px solid var(--line);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;overflow-y:auto;scrollbar-width:none;transition:transform .25s ease;}
+.sidebar::-webkit-scrollbar{display:none;}
+@media(max-width:700px){.sidebar{position:fixed;left:0;top:0;height:100%;z-index:300;transform:translateX(-100%);}.sidebar.open{transform:translateX(0);}}
+.sb-hdr{padding:18px 16px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+.sb-logo{font-family:"Instrument Serif",serif;font-size:20px;color:var(--ink);}
+.sb-logo em{color:var(--accent);font-style:italic;}
+.sb-sec{padding:12px 10px 6px;}
+.sb-lbl{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);padding:0 6px;margin-bottom:7px;}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--ink2);transition:all .15s;position:relative;}
+.sb-item:hover{background:var(--surface3);}
+.sb-item.on{background:var(--blue);color:#fff;}
+.sb-icon{font-size:14px;flex-shrink:0;}
+.sb-count{font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;background:var(--red);color:#fff;margin-left:auto;}
+.sb-goal{padding:9px 10px;margin-bottom:6px;border-radius:8px;background:var(--surface);border:1px solid var(--line);}
+.sb-goal-title{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:3px;}
+.sb-goal-due{font-size:10px;font-weight:600;margin-bottom:5px;}
+.sb-goal-bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;}
+.sb-goal-fill{height:100%;background:var(--blue);border-radius:2px;}
+.sidebar-fab{width:42px;height:42px;border-radius:50%;background:var(--blue);color:#fff;border:none;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:12px auto 16px;box-shadow:0 4px 14px rgba(74,140,219,.4);}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;}
+
+/* TOPBAR */
+.topbar{background:${dark?"rgba(24,24,28,.96)":"rgba(244,242,240,.96)"};backdrop-filter:blur(20px);border-bottom:1px solid var(--line);padding:0 20px;display:flex;align-items:center;gap:3px;position:sticky;top:0;z-index:100;height:48px;flex-shrink:0;}
+.menu-btn{width:32px;height:32px;border:none;background:transparent;cursor:pointer;font-size:18px;color:var(--ink3);display:flex;align-items:center;justify-content:center;border-radius:6px;margin-right:4px;}
+.menu-btn:hover{background:var(--surface2);}
+.top-tab{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:transparent;color:var(--ink3);transition:all .15s;display:flex;align-items:center;gap:5px;}
+.top-tab.on{background:var(--blue);color:#fff;}
+.top-tab:hover:not(.on){background:var(--surface2);color:var(--ink);}
+.top-tab-n{font-size:10px;font-weight:700;padding:1px 6px;border-radius:7px;background:rgba(255,255,255,.25);}
+.top-tab-n.red{background:var(--red);}
+.topbar-r{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.weather-p{font-size:11px;color:var(--ink3);padding:3px 9px;border-radius:16px;background:var(--surface2);border:1px solid var(--line);}
+.dm-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--surface2);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;}
+
+/* CONTENT */
+.content{padding:22px 24px;flex:1;overflow-y:auto;}
+
+/* TASK SECTION — Luna style */
+.prio-sec{margin-bottom:26px;animation:fadein .2s ease;}
+.prio-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.prio-title{font-family:"Instrument Serif",serif;font-style:italic;font-size:24px;color:var(--ink);letter-spacing:-.3px;}
+.prio-add-btn{width:24px;height:24px;border-radius:6px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--ink3);}
+.prio-add-btn:hover{background:var(--surface2);color:var(--ink);}
+
+/* Task row — exactly like Luna */
+.task-row{display:flex;align-items:center;padding:9px 8px;border-radius:8px;transition:background .12s;cursor:default;gap:2px;}
+.task-row:hover{background:var(--surface2);}
+.task-row + .task-row{border-top:1px solid var(--line);}
+.task-day-n{font-size:11px;color:var(--ink3);width:30px;text-align:right;padding-right:8px;flex-shrink:0;font-family:monospace;}
+.task-chk{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--line);background:transparent;cursor:pointer;flex-shrink:0;margin-right:8px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:transparent;transition:all .15s;}
+.task-chk:hover{border-color:var(--accent);}
+.task-chk.done{background:var(--accent);border-color:var(--accent);color:#1A1410;}
+.task-arrow-ico{font-size:11px;margin-right:6px;width:14px;flex-shrink:0;}
+.task-started-d{width:7px;height:7px;border-radius:50%;background:var(--blue);margin-right:6px;flex-shrink:0;}
+.task-ttl{flex:1;font-size:13px;font-weight:400;color:var(--ink);line-height:1.4;}
+.task-ttl.done{text-decoration:line-through;color:var(--ink3);}
+.task-chips-row{display:flex;gap:4px;align-items:center;flex-shrink:0;}
+.t-chip{font-family:monospace;font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--surface3);color:var(--ink3);}
+.t-chip.nw{background:${dark?"#242E44":"#E8EEF8"};color:var(--blue);}
+.t-chip.blue{background:${dark?"rgba(74,140,219,.2)":"rgba(74,140,219,.1)"};color:var(--blue);}
+.t-chip.red{color:var(--red);}
+.task-note-row{padding:4px 8px 6px 58px;font-size:11px;color:var(--ink3);font-style:italic;}
+
+/* Inline add */
+.inline-add-row{display:flex;align-items:center;gap:6px;padding:8px 8px;border-top:1px solid var(--line);}
+.inline-add-input{flex:1;font-size:13px;border:none;background:transparent;outline:none;color:var(--ink);padding:2px 0;}
+.inline-add-input::placeholder{color:var(--ink3);}
+
+/* Quick add panel */
+.qa-panel{position:fixed;bottom:80px;right:20px;width:min(340px,calc(100vw - 32px));background:var(--surface);border-radius:var(--r);border:1px solid var(--line);box-shadow:0 8px 32px rgba(0,0,0,.18);padding:16px;z-index:400;animation:fadein .18s ease;}
+.qa-input{width:100%;font-size:14px;font-weight:500;border:none;border-bottom:1.5px solid var(--line);background:transparent;outline:none;color:var(--ink);padding:4px 0;margin-bottom:12px;}input,textarea,select{color:var(--ink);background:var(--surface);}
+.qa-input:focus{border-bottom-color:var(--accent);}
+.qa-input::placeholder{color:var(--ink3);}
+.qa-row{display:flex;gap:6px;flex-wrap:wrap;}
+.qa-sel{font-size:11px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;background:var(--surface2);color:var(--ink);outline:none;font-family:Inter,sans-serif;}
+.qa-add{background:var(--blue);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin-left:auto;}
+.mic-btn{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface2);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;color:var(--ink3);}
+.mic-btn.on{background:var(--accent);border-color:var(--accent);color:#1A1410;animation:pulse 1s ease infinite;}
+
+/* FAB */
+.global-fab{position:fixed;bottom:20px;right:20px;width:50px;height:50px;border-radius:50%;background:var(--blue);color:#fff;border:none;font-size:26px;cursor:pointer;box-shadow:0 4px 16px rgba(74,140,219,.45);z-index:400;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.global-fab:hover{transform:scale(1.08);}
+
+/* HABITS — Luna 7-day grid */
+.habit-card{background:var(--surface);border-radius:var(--r);padding:16px 18px;margin-bottom:12px;border:1px solid var(--line);box-shadow:var(--shadow);animation:fadein .2s ease;}
+.hc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.hc-title{font-size:15px;font-weight:600;color:var(--ink);}
+.hc-days-row{display:flex;gap:5px;}
+.hc-day-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;}
+.hc-day-lbl{font-size:9px;font-weight:600;color:var(--ink3);letter-spacing:.2px;}
+.hc-dot{width:32px;height:32px;border-radius:50%;border:2px solid transparent;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:transparent;transition:all .2s;}
+.hc-dot.done{color:#fff;}
+.hc-dot.today{width:40px;height:40px;font-size:15px;}
+.hc-dot.missed{border-color:var(--line)!important;opacity:.4;}
+.hc-motivate{margin-top:10px;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:8px;}
+
+/* Wellbeing cards */
+.wb-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+.wb-card{background:var(--surface);border-radius:var(--r);padding:14px;border:1px solid var(--line);}
+.wb-lbl{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+.wb-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;}
+.wb-badge.up{background:${dark?"rgba(125,191,142,.2)":"rgba(125,191,142,.12)"};color:#5A9E6F;}
+.wb-badge.dn{background:${dark?"rgba(224,122,111,.2)":"rgba(224,122,111,.12)"};color:#E07A6F;}
+.emo-list{display:flex;flex-direction:column;gap:7px;}
+.emo-row{display:flex;align-items:center;gap:8px;}
+.emo-lbl{font-size:12px;font-weight:600;flex:1;}
+.emo-bar{flex:2;height:4px;background:var(--line);border-radius:2px;overflow:hidden;}
+.emo-fill{height:100%;border-radius:2px;}
+.emo-cnt{font-size:11px;color:var(--ink3);font-weight:700;width:14px;text-align:right;}
+
+/* MOOD */
+.mood-q{font-size:17px;font-weight:700;color:var(--ink);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.mood-grid{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;}
+.mood-opt{display:flex;align-items:center;gap:6px;padding:6px 13px;border-radius:20px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;transition:all .2s;font-size:12px;font-weight:500;}
+.mood-opt.on{border-width:2px;}
+.energy-row{display:flex;gap:8px;margin-bottom:16px;}
+.energy-btn{flex:1;padding:10px 6px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;text-align:center;transition:all .2s;}
+.energy-btn.on{border-color:var(--accent);}
+.e-emoji{font-size:18px;display:block;margin-bottom:3px;}
+.e-lbl{font-size:10px;font-weight:600;color:var(--ink3);}
+.energy-btn.on .e-lbl{color:var(--accent);}
+
+/* JOURNAL */
+.j-ta{width:100%;font-family:Inter,sans-serif;font-size:13px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:12px;color:var(--ink);resize:none;outline:none;line-height:1.7;min-height:110px;}
+.j-ta:focus{border-color:var(--accent);}
+.j-ta::placeholder{color:var(--ink3);}
+.j-entry{background:var(--surface);border-radius:8px;padding:12px 14px;border:1px solid var(--line);margin-bottom:8px;animation:fadein .2s ease;}
+.j-meta{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.j-date{font-size:10px;font-weight:600;color:var(--ink3);font-family:monospace;}
+.j-text{font-size:12px;color:var(--ink2);line-height:1.6;}
+.mood-history{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;}
+.mh-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;border:1.5px solid var(--line);}
+
+/* PEOPLE */
+.person-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);}
+.person-row:last-child{border-bottom:none;}
+.p-emo{font-size:28px;}
+.p-body{flex:1;}
+.p-name{font-size:14px;font-weight:600;color:var(--ink);}
+.p-sub{font-size:11px;color:var(--ink3);margin-top:2px;}
+.p-overdue{color:var(--red);font-weight:600;}
+.contact-btn{font-size:10px;font-weight:600;padding:6px 11px;border-radius:7px;background:var(--blue);color:#fff;border:none;cursor:pointer;}
+
+/* MEDS */
+.med-row2{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line);}
+.med-row2:last-child{border-bottom:none;}
+.med-chk2{width:27px;height:27px;border-radius:7px;border:2px solid var(--line);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:transparent;transition:all .2s;}
+.med-chk2.on{background:var(--green);border-color:var(--green);color:#fff;}
+
+/* NOTES */
+.qn-box{background:${dark?"rgba(255,190,152,.07)":"rgba(255,190,152,.1)"};border:1.5px solid ${dark?"rgba(255,190,152,.2)":"rgba(255,190,152,.28)"};border-radius:var(--r);padding:14px;margin-bottom:14px;}
+.qn-lbl{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:8px;}
+.qn-ta{width:100%;font-family:Inter,sans-serif;font-size:13px;border:none;background:transparent;color:var(--ink);resize:none;outline:none;line-height:1.7;min-height:70px;}
+.qn-ta::placeholder{color:var(--ink3);}
+.note-item{background:var(--surface);border-radius:8px;padding:12px 14px;border:1px solid var(--line);margin-bottom:7px;}
+.note-txt{font-size:13px;color:var(--ink);line-height:1.6;margin-bottom:5px;}
+.note-meta{display:flex;justify-content:space-between;align-items:center;}
+.note-date{font-size:9px;font-family:monospace;color:var(--ink3);}
+
+/* POMO */
+.pomo-card{background:${dark?"#111":"#1A1410"};border-radius:var(--r);padding:28px 20px 22px;text-align:center;}
+.pomo-phase{font-size:9px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#605850;margin-bottom:8px;}
+.pomo-phase.brk{color:var(--green);}
+.pomo-time{font-family:"Instrument Serif",serif;font-size:64px;color:#F0EDE8;line-height:1;margin-bottom:8px;letter-spacing:-2px;}
+.pomo-time.brk{color:var(--green);}
+.pomo-dots{display:flex;justify-content:center;align-items:center;gap:6px;margin-bottom:18px;}
+.pdot{width:7px;height:7px;border-radius:50%;background:#2C2A20;transition:all .3s;}
+.pdot.on{background:var(--accent);}
+.p-btns{display:flex;gap:8px;justify-content:center;}
+.p-btn{font-size:11px;font-weight:600;padding:10px 22px;border-radius:8px;cursor:pointer;border:none;}
+.p-btn.go{background:var(--accent);color:#1A1410;}
+.p-btn.rs{background:#2C2A20;color:#807060;border:1px solid #3C3A30;}
+.p-bar{height:3px;background:#2C2A20;border-radius:2px;margin-top:18px;overflow:hidden;}
+.p-fill{height:100%;border-radius:2px;transition:width 1s linear;}
+
+/* LOGBOOK */
+.log-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);}
+.log-item:last-child{border-bottom:none;}
+.log-chk{width:18px;height:18px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#1A1410;flex-shrink:0;}
+.log-ttl{flex:1;font-size:13px;color:var(--ink2);text-decoration:line-through;}
+.log-time{font-size:10px;font-family:monospace;color:var(--ink3);}
+
+/* SEC HEADER */
+.sec{display:flex;align-items:center;gap:10px;margin-bottom:12px;margin-top:20px;}
+.sec:first-child{margin-top:0;}
+.sec-t{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);white-space:nowrap;}
+.sec-line{flex:1;height:1px;background:var(--line);}
+.sec-btn{font-size:10px;font-weight:600;color:var(--accent);border:none;background:transparent;cursor:pointer;padding:0;}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+.stat-card{background:var(--surface);border-radius:8px;padding:12px;border:1px solid var(--line);text-align:center;}
+.stat-n{font-family:"Instrument Serif",serif;font-size:28px;color:var(--ink);line-height:1;}
+.stat-l{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);margin-top:2px;}
+
+/* OVERLAY + FORMS */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:250;}
+.info{font-size:11px;color:var(--ink3);line-height:1.7;padding:10px 12px;background:var(--surface2);border-radius:8px;margin-top:10px;}
+.form-input{font-family:Inter,sans-serif;font-size:13px;border:none;border-bottom:1.5px solid var(--line);background:transparent;padding:4px 0;outline:none;color:var(--ink);transition:border-color .2s;width:100%;}
+.form-input:focus{border-bottom-color:var(--accent);}
+.form-input::placeholder{color:var(--ink3);}
+.form-sel{font-family:Inter,sans-serif;font-size:11px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:var(--surface2);color:var(--ink);outline:none;color-scheme:${dark?"dark":"light"};}
+.form-btn{background:var(--blue);color:#fff;border:none;padding:7px 14px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;}
+
+/* ── DARK MODE TEXT FIXES ── */
+.dark body, .dark input, .dark textarea, .dark select { color: var(--ink); }
+input { color: var(--ink) !important; background: transparent; }
+textarea { color: var(--ink) !important; }
+select { color: var(--ink) !important; }
+.asel, .qa-sel, .form-sel, .add-sel { color: var(--ink) !important; background: var(--surface2) !important; }
+.ai, .qa-input, .form-input, .add-input, .med-input, .habit-input { color: var(--ink) !important; }
+.j-ta, .qn-ta, .dta { color: var(--ink) !important; background: var(--surface) !important; }
+.pkey { color: var(--ink) !important; background: var(--surface) !important; }
+/* Fix any white text on light surfaces */
+.sb-item.on, .sbi.on, .top-tab.on, .ttab.on { color: #fff !important; }
+/* Fix task titles */
+.task-ttl, .tc-title, .rc-title, .ttl { color: var(--ink) !important; }
+/* Fix section headers */
+.prio-title, .sec-ttl, .sec-t, .sb-logo { color: var(--ink) !important; }
+/* Fix modal text */
+.modal-title, .rtitle, .focus-modal-title { color: var(--ink) !important; }
+/* Fix card text */
+.hc-title, .med-title, .habit-title, .person-name, .p-name { color: var(--ink) !important; }
+/* Fix stat numbers */
+.stat-n, .sn, .streak-num, .streak-n { color: var(--ink) !important; }
+/* Fix chip text */
+.tc-chip, .t-chip, .chip { color: var(--ink3) !important; }
+/* Ensure note inputs are visible */
+.tc-note-input { color: var(--ink) !important; background: var(--surface2) !important; }
+/* Fix time inputs */
+input[type="time"], input[type="color"] { color-scheme: dark; }
+
+.empty{text-align:center;padding:40px 20px;color:var(--ink3);}
+.empty-i{font-size:32px;margin-bottom:10px;}
+.empty-t{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+`;
+
+// ─── SPEECH ───────────────────────────────────────────────────────────────────
+function useSpeech(){
+  const[listening,setListening]=useState(false);
+  const[transcript,setTranscript]=useState("");
+  const[supported,setSupported]=useState(true);
+  const ref=useRef(null);
+  useEffect(()=>{
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){setSupported(false);return;}
+    const r=new SR();r.continuous=false;r.interimResults=true;r.lang="en-GB";
+    r.onresult=e=>setTranscript(Array.from(e.results).map(x=>x[0].transcript).join(""));
+    r.onend=()=>setListening(false);r.onerror=()=>setListening(false);
+    ref.current=r;
+  },[]);
+  const toggle=()=>{if(!ref.current)return;if(listening){ref.current.stop();setListening(false);}else{setTranscript("");setListening(true);ref.current.start();}};
+  return{listening,transcript,supported,toggle,setTranscript};
+}
+
+// ─── WAVE CHART ───────────────────────────────────────────────────────────────
+function WaveChart({data,color}){
+  if(!data||data.length<2)return<div style={{height:44,background:"var(--surface3)",borderRadius:4}}/>;
+  const W=200,H=44,P=5;
+  const mn=Math.min(...data),mx=Math.max(...data),range=mx-mn||1;
+  const pts=data.map((v,i)=>({x:P+(i/(data.length-1))*(W-P*2),y:H-P-((v-mn)/range)*(H-P*2)}));
+  let d=`M${pts[0].x},${pts[0].y}`;
+  for(let i=1;i<pts.length;i++){const cp=(pts[i-1].x+pts[i].x)/2;d+=` C${cp},${pts[i-1].y} ${cp},${pts[i].y} ${pts[i].x},${pts[i].y}`;}
+  return(
+    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{overflow:"visible"}}>
+      <path d={d} fill="none" stroke="var(--line)" strokeWidth="1.5" strokeLinecap="round" transform="translate(0,6)" opacity=".6"/>
+      <path d={d} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+// ─── POMODORO ─────────────────────────────────────────────────────────────────
+function Pomodoro(){
+  const[phase,setPhase]=useState("work");
+  const[secs,setSecs]=useState(25*60);
+  const[running,setRunning]=useState(false);
+  const[round,setRound]=useState(0);
+  const ref=useRef({phase:"work",round:0});ref.current={phase,round};
+  useEffect(()=>{
+    if(!running)return;
+    const id=setInterval(()=>setSecs(s=>{
+      if(s>1)return s-1;
+      const{phase:ph,round:rnd}=ref.current;
+      setRunning(false);
+      if(ph==="work"){const nr=rnd+1;setRound(nr);const lg=nr%4===0;setPhase(lg?"long":"break");setSecs(lg?20*60:5*60);}
+      else{setPhase("work");setSecs(25*60);}
+      try{if(navigator.vibrate)navigator.vibrate([100,50,100]);}catch{}
+      return 0;
+    }),1000);
+    return()=>clearInterval(id);
+  },[running]);
+  const total=phase==="work"?25*60:phase==="break"?5*60:20*60;
+  const pct=((total-secs)/total)*100;
+  const isB=phase!=="work";
+  return(
+    <div className="pomo-card">
+      <div className={"pomo-phase"+(isB?" brk":"")}>{phase==="work"?"Focus Session":phase==="break"?"Short Break ☕":"Long Break 🎉"}</div>
+      <div className={"pomo-time"+(isB?" brk":"")}>{fmt(secs)}</div>
+      <div className="pomo-dots">{[0,1,2,3].map(i=><span key={i} className={"pdot"+(i<round%4?" on":"")}/>)}</div>
+      <div className="p-btns">
+        <button className="p-btn go" onClick={()=>setRunning(r=>!r)}>{running?"⏸ Pause":"▶ Start"}</button>
+        <button className="p-btn rs" onClick={()=>{setRunning(false);setPhase("work");setSecs(25*60);setRound(0);}}>↺</button>
+      </div>
+      <div className="p-bar"><div className="p-fill" style={{width:pct+"%",background:isB?"#7DBF8E":"#FFBE98"}}/></div>
+    </div>
+  );
+}
+
+
+// ── PULSE TIMER ──────────────────────────────────────────────────────────────
+const PULSE_ACTIVE_MS = 30000;   // 30 seconds active
+const PULSE_QUIET_MS  = 300000;  // 5 minutes quiet
+let pulseState = { active: true, countdown: 30, interval: null };
+
+
+// FOCUS SOUNDS
+var _sctx=null,_snodes=[],_scurrent=null;
+function _ctx(){if(!_sctx)_sctx=new(window.AudioContext||window.webkitAudioContext)();if(_sctx.state==='suspended')_sctx.resume();return _sctx;}
+function _stopAll(){_snodes.forEach(function(n){try{n.stop();}catch(e){}try{n.disconnect();}catch(e){}});_snodes=[];_scurrent=null;}
+function _noise(ctx,s){var sr=ctx.sampleRate,sz=sr*s,b=ctx.createBuffer(1,sz,sr),d=b.getChannelData(0);for(var i=0;i<sz;i++)d[i]=(Math.random()*2-1);var src=ctx.createBufferSource();src.buffer=b;src.loop=true;return src;}
+function playFan(){_stopAll();var ctx=_ctx(),src=_noise(ctx,2),lp=ctx.createBiquadFilter(),hp=ctx.createBiquadFilter(),g=ctx.createGain(),lfo=ctx.createOscillator(),lg=ctx.createGain();lp.type='lowpass';lp.frequency.value=900;hp.type='highpass';hp.frequency.value=180;g.gain.value=0.38;lfo.frequency.value=0.9;lg.gain.value=0.09;lfo.connect(lg);lg.connect(g.gain);src.connect(lp);lp.connect(hp);hp.connect(g);g.connect(ctx.destination);src.start();lfo.start();_snodes=[src,lfo,lg,g,lp,hp];_scurrent='fan';}
+function playRain(){_stopAll();var ctx=_ctx(),src=_noise(ctx,2),hp=ctx.createBiquadFilter(),pk=ctx.createBiquadFilter(),g=ctx.createGain();hp.type='highpass';hp.frequency.value=1400;pk.type='peaking';pk.frequency.value=2800;pk.gain.value=9;g.gain.value=0.32;src.connect(hp);hp.connect(pk);pk.connect(g);g.connect(ctx.destination);src.start();_snodes=[src,hp,pk,g];_scurrent='rain';}
+function playWaves(){_stopAll();var ctx=_ctx(),src=_noise(ctx,4),lp=ctx.createBiquadFilter(),g=ctx.createGain(),lfo=ctx.createOscillator(),lg=ctx.createGain(),lfo2=ctx.createOscillator(),lg2=ctx.createGain();lp.type='lowpass';lp.frequency.value=500;g.gain.value=0.45;lfo.frequency.value=0.11;lg.gain.value=0.3;lfo2.frequency.value=0.07;lg2.gain.value=0.18;lfo.connect(lg);lg.connect(g.gain);lfo2.connect(lg2);lg2.connect(g.gain);src.connect(lp);lp.connect(g);g.connect(ctx.destination);src.start();lfo.start();lfo2.start();_snodes=[src,lfo,lg,lfo2,lg2,g,lp];_scurrent='waves';}
+function playTrain(){_stopAll();var ctx=_ctx(),src=_noise(ctx,2),lp=ctx.createBiquadFilter(),g=ctx.createGain(),lfo=ctx.createOscillator(),lg=ctx.createGain();lp.type='lowpass';lp.frequency.value=280;g.gain.value=0.55;lfo.frequency.value=2.5;lfo.type='sawtooth';lg.gain.value=0.12;lfo.connect(lg);lg.connect(g.gain);src.connect(lp);lp.connect(g);g.connect(ctx.destination);src.start();lfo.start();_snodes=[src,lfo,lg,g,lp];_scurrent='train';}
+function toggleSound(type){if(_scurrent===type){_stopAll();return;}if(type==='fan')playFan();else if(type==='rain')playRain();else if(type==='waves')playWaves();else if(type==='train')playTrain();}
+function startPulseCycle(){
+  if(pulseState.interval) clearInterval(pulseState.interval);
+  pulseState.active = true;
+  pulseState.countdown = PULSE_ACTIVE_MS/1000;
+  pulseState.interval = setInterval(()=>{
+    pulseState.countdown--;
+    if(pulseState.countdown <= 0){
+      if(pulseState.active){
+        pulseState.active = false;
+        pulseState.countdown = PULSE_QUIET_MS/1000;
+      } else {
+        pulseState.active = true;
+        pulseState.countdown = PULSE_ACTIVE_MS/1000;
+        flashScreen();
+      }
+    }
+    // Only re-render for countdown display — avoid full re-render every second
+    const el = document.getElementById("pulse-status");
+    if(el) el.textContent = pulseState.active
+      ? `⚡ ${pulseState.countdown}s`
+      : `💤 ${Math.ceil(pulseState.countdown/60)}m`;
+    // Update pulse class on app
+    const app = document.getElementById("orbit-app");
+    if(app){
+      if(pulseState.active){ app.classList.add("pulsing"); app.classList.remove("not-pulsing"); }
+      else{ app.classList.remove("pulsing"); app.classList.add("not-pulsing"); }
+    }
+  }, 1000);
+}
+
+function flashScreen(){
+  const overlay = document.getElementById("flash-overlay");
+  if(overlay){ overlay.classList.add("active"); setTimeout(()=>overlay.classList.remove("active"), 800); }
+}
+
+// ── EMAIL CONFIG ──────────────────────────────────────────────────────────────
+const EMAIL_RECIPIENTS = ["vallance.sj@gmail.com", "stevev@tectratech.com"];
+
+function buildTaskList(tasks){
+  const must = tasks.filter(t=>!t.done&&t.priority==="must");
+  const should = tasks.filter(t=>!t.done&&t.priority==="should");
+  const want = tasks.filter(t=>!t.done&&t.priority==="want");
+  const done = tasks.filter(t=>t.done);
+  const now = new Date().toLocaleString("en-GB",{weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"});
+  let body = `ORBIT — Daily Task List\n${now}\n\n`;
+  if(must.length){ body += `🔴 MUST DO (${must.length})\n`; must.forEach(t=>body+=`  • ${t.title}${t.carryCount>0?` [carried x${t.carryCount}]`:""}\n`); body+="\n"; }
+  if(should.length){ body += `🟡 SHOULD DO (${should.length})\n`; should.forEach(t=>body+=`  • ${t.title}\n`); body+="\n"; }
+  if(want.length){ body += `🟢 WANT TO DO (${want.length})\n`; want.forEach(t=>body+=`  • ${t.title}\n`); body+="\n"; }
+  if(done.length){ body += `✅ COMPLETED (${done.length})\n`; done.forEach(t=>body+=`  ✓ ${t.title}\n`); }
+  body += "\n\nSent from ORBIT — Your ADHD Companion";
+  return body;
+}
+
+function sendMailto(tasks){
+  const subject = encodeURIComponent(`ORBIT Task List — ${new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}`);
+  const body = encodeURIComponent(buildTaskList(tasks));
+  const to = EMAIL_RECIPIENTS.join(",");
+  window.open(`mailto:${to}?subject=${subject}&body=${body}`, "_blank");
+}
+
+
+// ─── AES-256 ENCRYPTION ───────────────────────────────────────────────────────
+// All data stored in localStorage is encrypted with your PIN as the key.
+// Without the correct PIN the data is completely unreadable scrambled text.
+
+async function getKey(pin){
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw", enc.encode(pin + "orbit-aes-salt-2024"),
+    {name:"PBKDF2"}, false, ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt:enc.encode("orbit-salt-unique"), iterations:100000, hash:"SHA-256"},
+    keyMaterial, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]
+  );
+}
+
+async function encryptData(pin, data){
+  try {
+    const key = await getKey(pin);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const enc = new TextEncoder();
+    const encrypted = await crypto.subtle.encrypt(
+      {name:"AES-GCM", iv}, key, enc.encode(JSON.stringify(data))
+    );
+    const buf = new Uint8Array(iv.byteLength + encrypted.byteLength);
+    buf.set(iv, 0); buf.set(new Uint8Array(encrypted), iv.byteLength);
+    return btoa(String.fromCharCode(...buf));
+  } catch(e){ return null; }
+}
+
+async function decryptData(pin, ciphertext){
+  try {
+    const buf = Uint8Array.from(atob(ciphertext), c=>c.charCodeAt(0));
+    const iv = buf.slice(0,12);
+    const data = buf.slice(12);
+    const key = await getKey(pin);
+    const decrypted = await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, data);
+    return JSON.parse(new TextDecoder().decode(decrypted));
+  } catch(e){ return null; }
+}
+
+// Secure save — encrypts before writing to localStorage
+async function secureSave(pin, allData){
+  if(!pin) return;
+  const encrypted = await encryptData(pin, allData);
+  if(encrypted) localStorage.setItem("orbit_secure_data", encrypted);
+}
+
+// Secure load — decrypts after reading from localStorage
+async function secureLoad(pin){
+  const raw = localStorage.getItem("orbit_secure_data");
+  if(!raw) return null;
+  return await decryptData(pin, raw);
+}
+
+// Check if encrypted store exists
+function hasEncryptedStore(){
+  return !!localStorage.getItem("orbit_secure_data");
+}
+
+// ─── APP ──────────────────────────────────────────────────────────────────────
+function App(){
+  const[dark,setDark]=useState(()=>ls("orb_dark",false));
+  const[tasks,setTasks]=useState(()=>ls("orb_tasks",INIT_TASKS));
+  const[habits,setHabits]=useState(()=>ls("orb_habits",INIT_HABITS));
+  const[meds,setMeds]=useState(()=>ls("orb_meds",INIT_MEDS));
+  const[people,setPeople]=useState(()=>ls("orb_people",INIT_PEOPLE));
+  const[goals,setGoals]=useState(()=>ls("orb_goals",INIT_GOALS));
+  const[journal,setJournal]=useState(()=>ls("orb_journal",[]));
+  const[notes,setNotes]=useState(()=>ls("orb_notes",[]));
+  const[logbook,setLogbook]=useState(()=>ls("orb_logbook",[]));
+  const[mood,setMood]=useState(null);
+  const[energy,setEnergy]=useState(null);
+  const[moodKey,setMoodKey]=useState(()=>ls("orb_moodKey",""));
+  const[journalText,setJournalText]=useState("");
+  const[quickNote,setQuickNote]=useState("");
+  const[tab,setTab]=useState("tasks");
+  const[area,setArea]=useState(null);
+  const[sidebarOpen,setSidebarOpen]=useState(false);
+  const[showQA,setShowQA]=useState(false);
+  const[weather,setWeather]=useState(null);
+  const[inlineAdd,setInlineAdd]=useState(null);
+  const[inlineTitle,setInlineTitle]=useState("");
+  const[editNoteId,setEditNoteId]=useState(null);
+  const[noteText,setNoteText]=useState("");
+  const[newHTitle,setNewHTitle]=useState("");
+  const[newHEmoji,setNewHEmoji]=useState("⭐");
+  const[newHColor,setNewHColor]=useState("#FFBE98");
+  const[newPName,setNewPName]=useState("");
+  const[newPEmoji,setNewPEmoji]=useState("👤");
+  const[newPFreq,setNewPFreq]=useState(7);
+  const[qpTitle,setQpTitle]=useState("");
+  const[qpArea,setQpArea]=useState("work");
+  const[qpPrio,setQpPrio]=useState("should");
+  const[qpMins,setQpMins]=useState("");
+  const speech=useSpeech();
+
+
+  // ── PIN LOCK ──────────────────────────────────────────────────────────────
+  const STORED_HASH = () => ls("orb_pin_hash", null);
+  const hashPin = async (pin) => {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pin + "orbit-salt"));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+  };
+
+  const [pinState, setPinState] = useState(() => {
+    // If no PIN set yet → setup mode. If PIN set → locked.
+    return ls("orb_pin_hash", null) ? "locked" : "setup1";
+  });
+  const [pinInput, setPinInput] = useState("");
+  const [pinConfirm, setPinConfirm] = useState("");
+  const [pinError, setPinError] = useState("");
+  const [pinShake, setPinShake] = useState(false);
+
+  const unlocked = pinState === "unlocked";
+
+  async function handlePinDigit(d) {
+    const next = pinInput + d;
+    setPinInput(next);
+    setPinError("");
+
+    if (pinState === "setup1" && next.length === 4) {
+      setPinConfirm(next);
+      setPinInput("");
+      setPinState("setup2");
+      return;
+    }
+    if (pinState === "setup2" && next.length === 4) {
+      if (next !== pinConfirm) {
+        setPinError("PINs don't match — try again");
+        setPinShake(true); setTimeout(()=>setPinShake(false),400);
+        setPinInput(""); setPinConfirm(""); setPinState("setup1");
+        return;
+      }
+      const hash = await hashPin(next);
+      lss("orb_pin_hash", hash);
+      setPinState("unlocked"); setPinInput("");
+      return;
+    }
+    if (pinState === "locked" && next.length === 4) {
+      const hash = await hashPin(next);
+      if (hash === STORED_HASH()) {
+        setPinState("unlocked"); setPinInput("");
+      } else {
+        setPinError("Incorrect PIN");
+        setPinShake(true); setTimeout(()=>setPinShake(false),400);
+        setPinInput("");
+      }
+      return;
+    }
+  }
+
+  function handlePinDelete() {
+    setPinInput(p => p.slice(0,-1));
+    setPinError("");
+  }
+
+  function resetPin() {
+    lss("orb_pin_hash", null);
+    setPinState("setup1");
+    setPinInput(""); setPinConfirm(""); setPinError("");
+  }
+
+  // ── GOOGLE DRIVE SYNC ─────────────────────────────────────────────────────
+  const [gClientId, setGClientId] = useState(()=>ls("orb_gcid",""));
+  const [gClientIdInput, setGClientIdInput] = useState("");
+  const [gToken, setGToken] = useState(null);
+  const [gFileId, setGFileId] = useState(()=>ls("orb_gfid",""));
+  const [gSyncing, setGSyncing] = useState(false);
+  const [gStatus, setGStatus] = useState(""); // "saved"|"loaded"|"error"|"loading"
+  const [gSyncTime, setGSyncTime] = useState(()=>ls("orb_gsync_time",""));
+  const [gSetupStep, setGSetupStep] = useState(0);
+
+  useEffect(()=>lss("orb_gcid",gClientId),[gClientId]);
+  useEffect(()=>lss("orb_gfid",gFileId),[gFileId]);
+  useEffect(()=>lss("orb_gsync_time",gSyncTime),[gSyncTime]);
+
+  function gLogin() {
+    if (!gClientId.trim()) { setGSetupStep(1); return; }
+    const redirect = encodeURIComponent(window.location.href.split("?")[0].split("#")[0]);
+    const scope = encodeURIComponent("https://www.googleapis.com/auth/drive.file");
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${gClientId.trim()}&response_type=token&redirect_uri=${redirect}&scope=${scope}&prompt=select_account`;
+    const w = window.open(url,"gauth","width=520,height=640,scrollbars=yes");
+    const poll = setInterval(()=>{
+      try {
+        if (!w||w.closed){clearInterval(poll);return;}
+        const hash = w.location.hash;
+        if (hash&&hash.includes("access_token")) {
+          clearInterval(poll); w.close();
+          const tok = new URLSearchParams(hash.replace(/^#/,"")).get("access_token");
+          if (tok) { setGToken(tok); setGSetupStep(2); gSave(tok); }
+        }
+      } catch(e){}
+    },500);
+  }
+
+  async function gSave(token) {
+    const t = token || gToken; if (!t) return;
+    setGSyncing(true); setGStatus("loading");
+    try {
+      const data = {tasks,habits,meds,people,goals,journal,notes,logbook,savedAt:new Date().toISOString()};
+      const body = JSON.stringify(data);
+      let fid = gFileId;
+      if (fid) {
+        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fid}?uploadType=media`,{method:"PATCH",headers:{"Authorization":`Bearer ${t}`,"Content-Type":"application/json"},body});
+      } else {
+        const meta = await fetch("https://www.googleapis.com/drive/v3/files",{method:"POST",headers:{"Authorization":`Bearer ${t}`,"Content-Type":"application/json"},body:JSON.stringify({name:"ORBIT-data.json",mimeType:"application/json"})});
+        const mj = await meta.json(); fid = mj.id;
+        setGFileId(fid); lss("orb_gfid",fid);
+        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fid}?uploadType=media`,{method:"PATCH",headers:{"Authorization":`Bearer ${t}`,"Content-Type":"application/json"},body});
+      }
+      const t2 = new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+      setGSyncTime(t2); setGStatus("saved"); setTimeout(()=>setGStatus(""),4000);
+    } catch(e) { setGStatus("error"); }
+    setGSyncing(false);
+  }
+
+  async function gLoad(token) {
+    const t = token || gToken; if (!t||!gFileId) return;
+    setGSyncing(true); setGStatus("loading");
+    try {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${gFileId}?alt=media`,{headers:{"Authorization":`Bearer ${t}`}});
+      if (res.status===404){setGStatus("error");setGSyncing(false);return;}
+      const d = await res.json();
+      if (d.tasks)   setTasks(d.tasks);
+      if (d.habits)  setHabits(d.habits);
+      if (d.meds)    setMeds(d.meds);
+      if (d.people)  setPeople(d.people);
+      if (d.goals)   setGoals(d.goals);
+      if (d.journal) setJournal(d.journal);
+      if (d.notes)   setNotes(d.notes);
+      if (d.logbook) setLogbook(d.logbook);
+      const t2 = new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+      setGSyncTime(t2); setGStatus("loaded"); setTimeout(()=>setGStatus(""),4000);
+    } catch(e) { setGStatus("error"); }
+    setGSyncing(false);
+  }
+
+  // Auto-save every 10 mins when connected
+  useEffect(()=>{
+    if (!gToken) return;
+    const id = setInterval(()=>gSave(),10*60*1000);
+    return()=>clearInterval(id);
+  },[gToken,tasks,habits,meds,people,journal,notes]);
+
+
+  const[onboarded,setOnboarded]=useState(()=>ls('orb_onboarded',false));
+  const[onboardStep,setOnboardStep]=useState(0);
+  const[searchQuery,setSearchQuery]=useState('');
+  const[showSearch,setShowSearch]=useState(false);
+  const[weekendMode,setWeekendMode]=useState(()=>ls('orb_weekend',true));
+  const[isOnline,setIsOnline]=useState(navigator.onLine);
+  const[activeSound,setActiveSound]=useState(null);
+  const[recoveryEmail,setRecoveryEmail]=useState(()=>ls('orb_recovery_email',''));
+  const[qpDue,setQpDue]=useState('');
+  const prevMustRef=useRef(0);
+
+  useEffect(()=>{const on=()=>setIsOnline(true);const off=()=>setIsOnline(false);window.addEventListener('online',on);window.addEventListener('offline',off);return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off);};},[]);
+  useEffect(()=>{const key='orb_reset_'+new Date().toDateString();if(!ls(key,false)){setMeds(p=>p.map(m=>({...m,taken:false})));lss(key,true);}const id=setInterval(()=>{const n=new Date();if(n.getHours()===0&&n.getMinutes()===0){setMeds(p=>p.map(m=>({...m,taken:false})));setHabits(p=>p.map(h=>({...h,doneToday:false})));}},60000);return()=>clearInterval(id);},[]);
+  useEffect(()=>{const id=setInterval(()=>{const h=new Date().getHours(),m=new Date().getMinutes();if(h===21&&m===0){const u=habits.filter(x=>!x.doneToday&&x.streak>0);if(u.length){setShowBreak(true);setBreakMsg('Streak alert! '+u.length+' habit(s) not logged tonight.');}}},60000);return()=>clearInterval(id);},[habits]);
+  useEffect(()=>{const ml=tasks.filter(t=>!t.done&&t.priority==='must').length;const mt=tasks.filter(t=>t.priority==='must').length;if(mt>0&&ml===0&&prevMustRef.current>0){for(let i=0;i<8;i++)setTimeout(()=>confetti(Math.random()*window.innerWidth,100+Math.random()*200),i*120);setShowBreak(true);setBreakMsg('All urgent tasks done! Incredible work today!');}prevMustRef.current=ml;},[tasks]);
+  const todayK=todayKey();
+
+  useEffect(()=>lss("orb_dark",dark),[dark]);
+  useEffect(()=>lss("orb_tasks",tasks),[tasks]);
+  useEffect(()=>lss("orb_habits",habits),[habits]);
+  useEffect(()=>lss("orb_meds",meds),[meds]);
+  useEffect(()=>lss("orb_people",people),[people]);
+  useEffect(()=>lss("orb_goals",goals),[goals]);
+  useEffect(()=>lss("orb_journal",journal),[journal]);
+  useEffect(()=>lss("orb_notes",notes),[notes]);
+  useEffect(()=>lss("orb_logbook",logbook),[logbook]);
+  useEffect(()=>lss("orb_moodKey",moodKey),[moodKey]);
+
+  // Auto-encrypt and save all data whenever anything changes
+  useEffect(()=>{
+    if(currentPin&&pinState==="unlocked"){
+      const allData={tasks,habits,meds,people,goals,journal,notes,logbook};
+      secureSave(currentPin, allData);
+      // Remove any unencrypted copies
+      ["orb_tasks","orb_habits","orb_meds","orb_people","orb_goals","orb_journal","orb_notes","orb_logbook"].forEach(k=>localStorage.removeItem(k));
+    }
+  },[tasks,habits,meds,people,goals,journal,notes,logbook,currentPin,pinState]);
+
+  // Start pulse cycle on mount
+  useEffect(()=>{ startPulseCycle(); return()=>clearInterval(pulseState.interval); },[]);
+
+  useEffect(()=>{
+    let el=document.getElementById("orb-css");
+    if(!el){el=document.createElement("style");el.id="orb-css";document.head.appendChild(el);}
+    el.textContent=makeCSS(dark);
+  },[dark]);
+
+  useEffect(()=>{
+    navigator.geolocation?.getCurrentPosition(async p=>{
+      try{
+        const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.coords.latitude}&longitude=${p.coords.longitude}&current_weather=true`);
+        const d=await r.json();
+        const icons={0:"☀️",1:"🌤",2:"⛅",3:"☁️",51:"🌦",61:"🌧",71:"❄️",80:"🌦",95:"⛈"};
+        setWeather({temp:Math.round(d.current_weather.temperature),icon:icons[d.current_weather.weathercode]||"🌡"});
+      }catch{}
+    },()=>{});
+  },[]);
+
+  useEffect(()=>{if(speech.transcript)setQpTitle(speech.transcript);},[speech.transcript]);
+
+  // Task helpers
+  function sortTasks(arr){
+    const o={must:0,should:1,want:2,later:3};
+    return[...arr].sort((a,b)=>{
+      if(a.started!==b.started)return a.started?-1:1;
+      if(o[a.priority]!==o[b.priority])return o[a.priority]-o[b.priority];
+      return a.added-b.added;
+    });
+  }
+  const todoTasks=sortTasks(tasks.filter(t=>!t.done));
+  const doneTasks=tasks.filter(t=>t.done);
+  const filteredTasks=todoTasks.filter(t=>!area||t.area===area);
+  const grouped=useMemo(()=>{
+    const g={must:[],should:[],want:[],later:[]};
+    filteredTasks.forEach(t=>g[t.priority]?.push(t));
+    return g;
+  },[filteredTasks]);
+
+  function addTask(title,ar,pr,mins){
+    const t=(title||qpTitle).trim();if(!t)return;
+    setTasks(p=>[{id:uid(),title:t,area:ar||qpArea,priority:pr||qpPrio,done:false,started:false,note:"",mins:parseInt(mins||qpMins)||null,added:Date.now(),carryCount:0,nw:false},...p]);
+    setQpTitle("");setQpMins("");setInlineTitle("");speech.setTranscript("");setShowQA(false);setInlineAdd(null);
+  }
+  function toggleDone(id,e){
+    const t=tasks.find(x=>x.id===id);
+    if(!t.done){confetti(e.clientX,e.clientY);setLogbook(p=>[{id:uid(),title:t.title,time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),day:todayK},...p].slice(0,50));}
+    setTasks(p=>p.map(x=>x.id===id?{...x,done:!x.done,started:false}:x));
+  }
+  function toggleStarted(id){setTasks(p=>p.map(x=>x.id===id?{...x,started:!x.started}:x));}
+
+  // Habit helpers
+  function toggleHabit(id,e){
+    setHabits(p=>p.map(h=>{
+      if(h.id!==id)return h;
+      const was=h.doneToday;if(!was)confetti(e.clientX,e.clientY);
+      return{...h,doneToday:!was,streak:!was?h.streak+1:Math.max(0,h.streak-1),history:[...h.history.slice(-5),!was?1:0]};
+    }));
+  }
+
+  // People
+  function daysOverdue(p2){return Math.floor((Date.now()-p2.lastContact)/86400000)-p2.frequency;}
+  const overduePeople=people.filter(p2=>daysOverdue(p2)>0);
+
+  // Journal
+  function saveJournal(){
+    if(!journalText.trim())return;
+    setJournal(p=>[{id:uid(),text:journalText.trim(),mood,energy,date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}),timestamp:Date.now()},...p]);
+    setJournalText("");setMoodKey(todayK);
+  }
+
+  // Wellbeing
+  const wellbeing=useMemo(()=>{
+    const last=journal.slice(0,7).reverse();
+    const mData=last.map(e=>{const idx=MOODS.findIndex(m=>m.id===e.mood);return idx>=0?MOODS.length-idx:3;});
+    const eData=last.map(e=>e.energy==="high"?5:e.energy==="medium"?3:1);
+    const freq={};journal.slice(0,14).forEach(e=>{if(e.mood)freq[e.mood]=(freq[e.mood]||0)+1;});
+    const top=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([id,cnt])=>({id,cnt,m:MOODS.find(x=>x.id===id)}));
+    return{mData,eData,top};
+  },[journal]);
+
+  const TABS=[
+    {id:"tasks",label:"Tasks",count:todoTasks.length},
+    {id:"notes",label:"Notes",count:0},
+    {id:"habits",label:"Habits",count:habits.filter(h=>!h.doneToday).length},
+    {id:"journal",label:"Journal",count:0},
+    {id:"people",label:"People",count:overduePeople.length},
+  ];
+
+
+  // PIN SCREEN
+  if (!unlocked) {
+    const isSetup = pinState === "setup1" || pinState === "setup2";
+    return (
+      <div className="pin-screen">
+        <style>{makeCSS(dark)}</style>
+        <div className="pin-logo">OR<em>BIT</em></div>
+        <div className="pin-subtitle">Your personal ADHD companion</div>
+        {isSetup ? (
+          <>
+            <div className="pin-setup-title">{pinState==="setup1"?"Set your PIN":"Confirm your PIN"}</div>
+            <div className="pin-setup-sub">{pinState==="setup1"?"Choose a 4-digit PIN to protect your data":"Enter the same PIN again to confirm"}</div>
+          </>
+        ) : (
+          <div className="pin-setup-title">Enter your PIN</div>
+        )}
+        <div className="pin-dots">
+          {[0,1,2,3].map(i=>(
+            <div key={i} className={"pin-dot"+(pinInput.length>i?" filled":"")+(pinShake?" error":"")}/>
+          ))}
+        </div>
+        {pinError && <div className="pin-error">{pinError}</div>}
+        <div className="pin-pad">
+          {[1,2,3,4,5,6,7,8,9].map(n=>(
+            <button key={n} className="pin-btn" onClick={()=>handlePinDigit(String(n))}>{n}</button>
+          ))}
+          <div/>
+          <button className="pin-btn" onClick={()=>handlePinDigit("0")}>0</button>
+          <button className="pin-btn del" onClick={handlePinDelete}>⌫</button>
+        </div>
+        {isSetup&&pinState==="setup1"&&(
+          <div style={{fontSize:10,color:"var(--ink3)",marginTop:16,textAlign:"center",lineHeight:1.6,maxWidth:240}}>
+            🔒 Your data will be encrypted with AES-256 using your PIN as the key. Without your PIN, all stored data is completely unreadable.
+          </div>
+        )}
+        {!isSetup && (
+          <div className="pin-hint">Forgot your PIN?<br/>
+            <button style={{background:"none",border:"none",color:"var(--accent)",cursor:"pointer",fontSize:11,marginTop:4}} onClick={resetPin}>
+              Reset PIN (clears saved PIN only)
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return(
+    <div className="app" id="orbit-app">
+      <style>{makeCSS(dark)}</style>
+
+      {sidebarOpen&&window.innerWidth<=700&&<div className="overlay" onClick={()=>setSidebarOpen(false)}/>}
+
+      {/* Flash overlay */}
+      <div id="flash-overlay"/>
+      {/* Pulse status */}
+      <div id="pulse-status" style={{background:dark?"rgba(30,30,36,.9)":"rgba(236,234,231,.9)",color:dark?"#686068":"#9A9088",border:`1px solid ${dark?"#2E2E38":"#E0DCD8"}`}}/>
+      {/* Sidebar */}
+      <div className={"sidebar"+(sidebarOpen?" open":"")}>
+        <div className="sb-hdr">
+          <div className="sb-logo">OR<em>BIT</em></div>
+          {weather&&<span style={{fontSize:11,color:"var(--ink3)"}}>{weather.icon} {weather.temp}°C</span>}
+        </div>
+
+        <div className="sb-sec">
+          <div className={"sb-item"+(tab==="logbook"?" on":"")} onClick={()=>setTab("logbook")}>
+            <span className="sb-icon">→</span><span>Next to work on</span>
+          </div>
+          <div className={"sb-item"+(tab==="logbook"?" on":"")} onClick={()=>setTab("logbook")}>
+            <span className="sb-icon">✓</span><span>Logbook</span>
+          </div>
+        </div>
+
+        <div className="sb-sec">
+          <div className="sb-lbl">Areas of Life</div>
+          <div className={"sb-item"+(area===null&&tab==="tasks"?" on":"")} onClick={()=>{setArea(null);setTab("tasks");setSidebarOpen(false);}}>
+            <span className="sb-icon">🌐</span><span style={{flex:1}}>All areas</span>
+            {todoTasks.length>0&&<span className="sb-count" style={{background:"var(--blue)"}}>{todoTasks.length}</span>}
+          </div>
+          {Object.entries(AREAS).map(([k,a2])=>{
+            const cnt=todoTasks.filter(t=>t.area===k).length;
+            return(
+              <div key={k} className={"sb-item"+(area===k&&tab==="tasks"?" on":"")} onClick={()=>{setArea(k);setTab("tasks");setSidebarOpen(false);}}>
+                <span className="sb-icon">{a2.icon}</span><span style={{flex:1}}>{a2.label}</span>
+                {cnt>0&&<span className="sb-count">{cnt}</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        {goals.length>0&&(
+          <div className="sb-sec">
+            <div className="sb-lbl">Goals</div>
+            {goals.map(g=>{
+              const dl=Math.ceil((g.deadline-Date.now())/86400000);
+              return(
+                <div key={g.id} className="sb-goal">
+                  <div className="sb-goal-title">{g.title}</div>
+                  <div className="sb-goal-due" style={{color:dl<0?"var(--red)":dl<7?"#C9A84C":"var(--ink3)"}}>{dl<0?`${-dl}d overdue`:`Due in ${dl}d`}</div>
+                  <div className="sb-goal-bar"><div className="sb-goal-fill" style={{width:g.progress+"%"}}/></div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div style={{flex:1}}/>
+        <div style={{padding:"8px 10px"}}>
+          <div className={"sb-item"+(tab==="pomo"?" on":"")} onClick={()=>setTab("pomo")}><span className="sb-icon">🍅</span><span>Pomodoro</span></div>
+          <div className={"sb-item"+(tab==="sync"?" on":"")} onClick={()=>setTab("sync")}><span className="sb-icon">☁️</span><span>Sync & Security</span></div>
+          <div className={"sb-item"+(tab==="meds"?" on":"")} onClick={()=>setTab("meds")}><span className="sb-icon">💊</span><span>Medications</span></div>
+        </div>
+        <button className="sidebar-fab" onClick={()=>setShowQA(v=>!v)}>+</button>
+      </div>
+
+      {/* MAIN */}
+      <div className="main">
+        <div className="topbar">
+          <button className="menu-btn" onClick={()=>setSidebarOpen(v=>!v)}>≡</button>
+          {TABS.map(t=>{
+            const hasAlert=t.count>0&&tab!==t.id;
+            return(
+              <button key={t.id} className={"top-tab"+(tab===t.id?" on":hasAlert?" alert-tab":"")} onClick={()=>setTab(t.id)} style={{position:"relative"}}>
+                {t.label}
+                {t.count>0&&<span className={"top-tab-n"+(t.id==="people"?" red":"")}>{t.count}</span>}
+                {hasAlert&&<span className="tab-alert-dot"/>}
+              </button>
+            );
+          })}
+          <div className="topbar-r">
+            {!isOnline&&<span style={{fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:12,background:"rgba(224,122,111,.15)",color:"var(--red)",border:"1px solid rgba(224,122,111,.3)"}}>Offline</span>}
+            {[0,6].includes(new Date().getDay())&&weekendMode&&<span style={{fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:12,background:"rgba(125,191,142,.12)",color:"var(--green)"}}>Weekend</span>}
+            <button className="dm-btn" title="Search" onClick={()=>setShowSearch(true)}>&#128269;</button>
+            <button className="dm-btn" onClick={()=>setDark(d=>!d)}>{dark?"☀️":"??"}</button>
+          </div>
+        </div>
+
+        <div className="content">
+
+          {/* TASKS */}
+          {tab==="tasks"&&(
+            <>
+              {area&&(
+                <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"var(--surface2)",borderRadius:8,border:"1px solid var(--line)",marginBottom:16}}>
+                  <span>{AREAS[area]?.icon}</span>
+                  <span style={{fontSize:12,fontWeight:600,color:"var(--ink2)"}}>{AREAS[area]?.label}</span>
+                  <button style={{marginLeft:"auto",background:"none",border:"none",fontSize:10,fontWeight:600,color:"var(--accent)",cursor:"pointer"}} onClick={()=>setArea(null)}>Show all</button>
+                </div>
+              )}
+              {PRIO_ORDER.map(prio=>(
+                <div key={prio} className="prio-sec">
+                  <div className="prio-hdr">
+                    <span className="prio-title">{prio}</span>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      {grouped[prio]?.length===0&&<span style={{fontSize:11,color:"var(--ink3)"}}>{grouped[prio].length} tasks</span>}
+                      <button className="prio-add-btn" onClick={()=>setInlineAdd(prio)}>+</button>
+                    </div>
+                  </div>
+                  <div style={{background:"var(--surface)",borderRadius:"var(--r)",border:"1px solid var(--line)",overflow:"hidden"}}>
+                    {inlineAdd===prio&&(
+                      <div className="inline-add-row">
+                        <div style={{width:30}}/>
+                        <div style={{width:18,height:18,border:"1.5px solid var(--line)",borderRadius:4,flexShrink:0}}/>
+                        <input className="inline-add-input" placeholder={`New ${prio} task...`} value={inlineTitle} onChange={e=>setInlineTitle(e.target.value)} autoFocus
+                          onKeyDown={e=>{if(e.key==="Enter"&&inlineTitle.trim())addTask(inlineTitle,area||"work",prio);if(e.key==="Escape"){setInlineAdd(null);setInlineTitle("");}}}/>
+                        <button className="form-btn" style={{fontSize:10,padding:"4px 9px"}} onClick={()=>addTask(inlineTitle,area||"work",prio)}>Add</button>
+                        <button style={{background:"none",border:"none",color:"var(--ink3)",cursor:"pointer",fontSize:16}} onClick={()=>{setInlineAdd(null);setInlineTitle("");}}>×</button>
+                      </div>
+                    )}
+                    {(!grouped[prio]||grouped[prio].length===0)&&!inlineAdd&&(
+                      <div style={{padding:"10px 14px",fontSize:12,color:"var(--ink3)",fontStyle:"italic"}}>No {prio} tasks</div>
+                    )}
+                    {grouped[prio]?.map(task=>{
+                      const ds=daysSince(task.added);
+                      const a2=AREAS[task.area]||AREAS.work;
+                      return(
+                        <div key={task.id}>
+                          <div className="task-row">
+                            <span className="task-day-n">{ds>0?ds:""}</span>
+                            <button className={"task-chk"+(task.done?" done":"")} onClick={e=>toggleDone(task.id,e)}>{task.done?"✓":""}</button>
+                            <span className="task-arrow-ico" style={{color:PRIO_COLORS[task.priority]}}>{PRIO_ARROWS[task.priority]}</span>
+                            {task.started&&<span className="task-started-d"/>}
+                            <span className={"task-ttl"+(task.done?" done":"")}>{task.title}</span>
+                            <div className="task-chips-row">
+                              {task.mins&&<span className="t-chip">{task.mins<60?task.mins+"M":task.mins/60+"H"}</span>}
+                              {task.nw&&<span className="t-chip nw">NW</span>}
+                              {task.carryCount>0&&<span className="t-chip red">↩{task.carryCount}</span>}
+                              <span className="t-chip" style={{color:a2.color}}>{a2.icon}</span>
+                              <button className="prio-add-btn" style={{width:20,height:20,fontSize:11}} title={task.started?"Unstart":"Start"} onClick={()=>toggleStarted(task.id)}>{task.started?"⏹":"▶"}</button>
+                              <button className="prio-add-btn" style={{width:20,height:20,fontSize:11}} onClick={()=>{setEditNoteId(task.id===editNoteId?null:task.id);setNoteText(task.note||"");}}>📝</button>
+                              <button className="prio-add-btn" style={{width:20,height:20,fontSize:11}} onClick={()=>setTasks(p=>p.filter(x=>x.id!==task.id))}>×</button>
+                            </div>
+                          </div>
+                          {task.note&&editNoteId!==task.id&&<div className="task-note-row">📝 {task.note}</div>}
+                          {editNoteId===task.id&&(
+                            <div style={{padding:"6px 14px 10px 58px"}}>
+                              <input className="form-input" style={{fontSize:12,marginBottom:6}} placeholder="Add note..." value={noteText} onChange={e=>setNoteText(e.target.value)} autoFocus
+                                onKeyDown={e=>{if(e.key==="Enter"){setTasks(p=>p.map(x=>x.id===task.id?{...x,note:noteText}:x));setEditNoteId(null);}}}/>
+                              <div style={{display:"flex",gap:6}}>
+                                <button className="form-btn" style={{fontSize:10,padding:"4px 9px"}} onClick={()=>{setTasks(p=>p.map(x=>x.id===task.id?{...x,note:noteText}:x));setEditNoteId(null);}}>Save</button>
+                                <button style={{background:"none",border:"none",fontSize:10,color:"var(--ink3)",cursor:"pointer"}} onClick={()=>setEditNoteId(null)}>Cancel</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* NOTES */}
+          {tab==="notes"&&(
+            <>
+              <div className="qn-box">
+                <div className="qn-lbl">⚡ Quick Note</div>
+                <textarea className="qn-ta" placeholder="Capture a thought before it disappears..." value={quickNote} onChange={e=>setQuickNote(e.target.value)}/>
+                <div style={{display:"flex",gap:8,marginTop:8}}>
+                  <button className="form-btn" style={{flex:1}} onClick={()=>{if(quickNote.trim()){setNotes(p=>[{id:uid(),text:quickNote.trim(),date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"}),timestamp:Date.now()},...p]);setQuickNote("");}}}>Save note</button>
+                  <button className="form-btn" style={{background:"var(--accent)",color:"#1A1410"}} onClick={()=>{if(quickNote.trim()){setQpTitle(quickNote);setShowQA(true);setQuickNote("");}}}>→ Task</button>
+                </div>
+              </div>
+              {notes.length===0&&<div className="empty"><div className="empty-i">📝</div><div className="empty-t">No notes yet</div></div>}
+              {notes.map(n=>(
+                <div key={n.id} className="note-item">
+                  <div className="note-txt">{n.text}</div>
+                  <div className="note-meta">
+                    <span className="note-date">{n.date}</span>
+                    <div style={{display:"flex",gap:5}}>
+                      <button className="prio-add-btn" style={{width:"auto",padding:"2px 8px",fontSize:10}} onClick={()=>{setQpTitle(n.text);setShowQA(true);}}>→ Task</button>
+                      <button className="prio-add-btn" onClick={()=>setNotes(p=>p.filter(x=>x.id!==n.id))}>×</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* HABITS */}
+          {tab==="habits"&&(
+            <>
+              {journal.length>=3&&(
+                <>
+                  <div className="sec"><span className="sec-t">Wellbeing — Last 7 days</span><div className="sec-line"/></div>
+                  <div className="wb-grid">
+                    <div className="wb-card">
+                      <div className="wb-lbl">Last 7 days<span className="wb-badge up">+{Math.abs(Math.round((wellbeing.mData[wellbeing.mData.length-1]||3)-(wellbeing.mData[0]||3))*12)}%</span></div>
+                      <WaveChart data={wellbeing.mData.length>=2?wellbeing.mData:[3,4,3,5,4,5,4]} color="#FFBE98"/>
+                    </div>
+                    <div className="wb-card">
+                      <div className="wb-lbl" style={{marginBottom:8}}>Frequent emotions</div>
+                      <div className="emo-list">
+                        {wellbeing.top.length>0?wellbeing.top.map(e=>(
+                          <div key={e.id} className="emo-row">
+                            <span className="emo-lbl" style={{color:e.m?.color||"var(--ink)"}}>{e.id}</span>
+                            <div className="emo-bar"><div className="emo-fill" style={{width:(e.cnt/wellbeing.top[0].cnt*100)+"%",background:e.m?.color||"var(--accent)"}}/></div>
+                            <span className="emo-cnt">{e.cnt}</span>
+                          </div>
+                        )):<div style={{fontSize:11,color:"var(--ink3)"}}>Log mood in Journal to see patterns</div>}
+                      </div>
+                    </div>
+                    <div className="wb-card">
+                      <div className="wb-lbl">Your Energy<span className="wb-badge up">+27%</span></div>
+                      <WaveChart data={wellbeing.eData.length>=2?wellbeing.eData:[2,3,2,4,3,4,5]} color="#6B8CBA"/>
+                    </div>
+                    <div className="wb-card">
+                      <div className="wb-lbl">Your Stress<span className="wb-badge dn">-10%</span></div>
+                      <WaveChart data={[4,3,4,3,2,2,2]} color="#E07A8F"/>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="mood-q">
+                How do you feel today?
+                <span style={{fontSize:22}}>{mood?MOODS.find(m=>m.id===mood)?.emoji||"😊":"😊"}</span>
+              </div>
+              <div className="mood-grid">
+                {MOODS.map(m=>(
+                  <div key={m.id} className={"mood-opt"+(mood===m.id?" on":"")}
+                    style={mood===m.id?{borderColor:m.color,background:m.color+"18"}:{}}
+                    onClick={()=>setMood(m.id)}>
+                    <span style={{fontSize:16}}>{m.emoji}</span>
+                    <span style={{fontSize:12,color:mood===m.id?m.color:"var(--ink2)"}}>{m.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="sec" style={{marginTop:20}}><span className="sec-t">Daily Habits</span><div className="sec-line"/></div>
+              {habits.map(h=>{
+                const last6=[...h.history.slice(-6)];
+                while(last6.length<6)last6.unshift(null);
+                const dayLabels=Array.from({length:6},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(5-i));return DAYS_S[d.getDay()].slice(0,3);});
+                return(
+                  <div key={h.id} className="habit-card">
+                    <div className="hc-top">
+                      <span className="hc-title">{h.emoji} {h.title}</span>
+                      <span style={{fontFamily:"monospace",fontSize:13,fontWeight:700,color:h.color}}>🔥 {h.streak}</span>
+                    </div>
+                    <div className="hc-days-row">
+                      {[...dayLabels,"Today"].map((lbl,i)=>{
+                        const isToday=i===6;
+                        const done=isToday?h.doneToday:(last6[i]===1);
+                        const missed=!done&&!isToday&&last6[i]!==null;
+                        return(
+                          <div key={i} className="hc-day-col">
+                            <span className="hc-day-lbl">{lbl}</span>
+                            <div className={"hc-dot"+(done?" done":"")+(isToday?" today":"")+(missed?" missed":"")}
+                              style={{background:done?h.color:"transparent",borderColor:done?"transparent":isToday?h.color+"55":"var(--line)",cursor:isToday?"pointer":"default"}}
+                              onClick={isToday?e=>toggleHabit(h.id,e):undefined}>
+                              {done?"✓":""}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {h.streak>=2&&(
+                      <div className="hc-motivate" style={{background:h.color+"18",color:h.color}}>
+                        🏆 {h.streak}-day streak — keep going!
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <div style={{background:"var(--surface)",border:"1px solid var(--line)",borderRadius:"var(--r)",padding:14,marginTop:4}}>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <select className="form-sel" value={newHEmoji} onChange={e=>setNewHEmoji(e.target.value)}>
+                    {["⭐","💧","🧘","📚","🏃","🥗","😴","🎯","💊","📵","✍️","🌿","💪","🚶"].map(e=><option key={e} value={e}>{e}</option>)}
+                  </select>
+                  <input className="form-input" placeholder="New habit..." value={newHTitle} onChange={e=>setNewHTitle(e.target.value)}
+                    onKeyDown={e=>{if(e.key==="Enter"&&newHTitle.trim()){setHabits(p=>[...p,{id:uid(),title:newHTitle.trim(),emoji:newHEmoji,color:newHColor,streak:0,history:[],doneToday:false}]);setNewHTitle("");}}}/>
+                  <input type="color" value={newHColor} onChange={e=>setNewHColor(e.target.value)} style={{width:28,height:28,border:"none",borderRadius:4,cursor:"pointer",padding:0}}/>
+                  <button className="form-btn" onClick={()=>{if(newHTitle.trim()){setHabits(p=>[...p,{id:uid(),title:newHTitle.trim(),emoji:newHEmoji,color:newHColor,streak:0,history:[],doneToday:false}]);setNewHTitle("");}}}>Add</button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* JOURNAL */}
+          {tab==="journal"&&(
+            <>
+              <div className="sec"><span className="sec-t">How are you feeling?</span><div className="sec-line"/></div>
+              <div className="mood-grid">
+                {MOODS.map(m=>(
+                  <div key={m.id} className={"mood-opt"+(mood===m.id?" on":"")}
+                    style={mood===m.id?{borderColor:m.color,background:m.color+"18"}:{}}
+                    onClick={()=>setMood(m.id)}>
+                    <span style={{fontSize:16}}>{m.emoji}</span>
+                    <span style={{fontSize:11,color:mood===m.id?m.color:"var(--ink2)"}}>{m.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="energy-row">
+                {ENERGY.map(e=>(
+                  <div key={e.id} className={"energy-btn"+(energy===e.id?" on":"")} onClick={()=>setEnergy(e.id)}>
+                    <span className="e-emoji">{e.emoji}</span>
+                    <span className="e-lbl">{e.label}</span>
+                  </div>
+                ))}
+              </div>
+              <textarea className="j-ta" placeholder={"What's on your mind?
+
+No rules, no judgement — just write."} value={journalText} onChange={e=>setJournalText(e.target.value)}/>
+              <button style={{width:"100%",marginTop:10,padding:10,background:"var(--blue)",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"}} onClick={saveJournal}>Save entry</button>
+              {journal.length>0&&(
+                <>
+                  <div className="sec" style={{marginTop:20}}><span className="sec-t">Mood history</span><div className="sec-line"/></div>
+                  <div className="mood-history">
+                    {journal.slice(0,14).map(e=>{const m2=MOODS.find(m=>m.id===e.mood);return<div key={e.id} className="mh-dot" style={m2?{background:m2.color+"18",borderColor:m2.color}:{}} title={e.date}>{m2?m2.emoji:"·"}</div>;})}
+                  </div>
+                  <div className="sec" style={{marginTop:20}}><span className="sec-t">Past entries</span><div className="sec-line"/></div>
+                  {journal.map(e=>{
+                    const m2=MOODS.find(m=>m.id===e.mood);const en=ENERGY.find(x=>x.id===e.energy);
+                    return(
+                      <div key={e.id} className="j-entry">
+                        <div className="j-meta">
+                          <span className="j-date">{e.date}</span>
+                          {m2&&<span>{m2.emoji}</span>}
+                          {en&&<span style={{fontSize:10,color:"var(--ink3)"}}>{en.emoji} {en.label}</span>}
+                          <button style={{marginLeft:"auto",background:"none",border:"none",color:"var(--ink3)",cursor:"pointer",fontSize:14}} onClick={()=>setJournal(p=>p.filter(x=>x.id!==e.id))}>×</button>
+                        </div>
+                        <div className="j-text">{e.text}</div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </>
+          )}
+
+          {/* PEOPLE */}
+          {tab==="people"&&(
+            <>
+              <div className="sec"><span className="sec-t">Relationships</span><div className="sec-line"/></div>
+              <div className="info" style={{marginBottom:14}}>ORBIT tracks when you last connected. Out of sight, out of mind — this keeps people from slipping away. 💙</div>
+              {people.map(p2=>{
+                const od=daysOverdue(p2);const ds2=Math.floor((Date.now()-p2.lastContact)/86400000);
+                return(
+                  <div key={p2.id} className="person-row">
+                    <span className="p-emo">{p2.emoji}</span>
+                    <div className="p-body">
+                      <div className="p-name">{p2.name}</div>
+                      <div className="p-sub">{od>0?<span className="p-overdue">⚠ {od}d overdue</span>:<span>Last: {ds2===0?"today":`${ds2}d ago`} · Every {p2.frequency}d</span>}</div>
+                    </div>
+                    <div style={{display:"flex",gap:6,flexDirection:"column",alignItems:"flex-end"}}>
+                      <button className="contact-btn" onClick={()=>{setPeople(p=>p.map(x=>x.id===p2.id?{...x,lastContact:Date.now()}:x));confetti(window.innerWidth/2,200);}}>✓ Contacted</button>
+                      <button style={{background:"none",border:"none",fontSize:10,color:"var(--ink3)",cursor:"pointer"}} onClick={()=>setPeople(p=>p.filter(x=>x.id!==p2.id))}>Remove</button>
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{background:"var(--surface)",border:"1px solid var(--line)",borderRadius:"var(--r)",padding:14,marginTop:12}}>
+                <div style={{display:"flex",gap:8,marginBottom:8}}>
+                  <select className="form-sel" value={newPEmoji} onChange={e=>setNewPEmoji(e.target.value)}>
+                    {["👤","👩","👨","👫","🤝","❤️","⭐","🧑‍💻","🎓"].map(e=><option key={e} value={e}>{e}</option>)}
+                  </select>
+                  <input className="form-input" placeholder="Name..." value={newPName} onChange={e=>setNewPName(e.target.value)}/>
+                </div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <span style={{fontSize:11,color:"var(--ink3)"}}>Remind every</span>
+                  <select className="form-sel" value={newPFreq} onChange={e=>setNewPFreq(Number(e.target.value))}>
+                    {[3,7,14,21,30].map(d=><option key={d} value={d}>{d} days</option>)}
+                  </select>
+                  <button className="form-btn" onClick={()=>{if(newPName.trim()){setPeople(p=>[...p,{id:uid(),name:newPName.trim(),emoji:newPEmoji,lastContact:Date.now(),frequency:newPFreq}]);setNewPName("");}}}>Add</button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* MEDS */}
+          {tab==="meds"&&(
+            <>
+              <div className="sec"><span className="sec-t">Medications & Supplements</span><div className="sec-line"/></div>
+              {[...new Set(meds.map(m=>m.time))].sort().map(t2=>(
+                <div key={t2}>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"var(--ink3)",padding:"10px 0 5px",fontFamily:"monospace"}}>⏰ {t2}</div>
+                  {meds.filter(m=>m.time===t2).map(m=>(
+                    <div key={m.id} className="med-row2" style={{opacity:m.taken?.38:1}}>
+                      <span style={{fontSize:20,width:30,textAlign:"center"}}>{m.emoji}</span>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:13,fontWeight:500,color:"var(--ink)",textDecoration:m.taken?"line-through":"none"}}>{m.title}</div>
+                        {m.note&&<div style={{fontSize:10,color:"var(--ink3)",fontStyle:"italic"}}>{m.note}</div>}
+                      </div>
+                      <button className={"med-chk2"+(m.taken?" on":"")} onClick={e=>{if(!m.taken)confetti(e.clientX,e.clientY);setMeds(p=>p.map(x=>x.id===m.id?{...x,taken:!x.taken}:x));}}>{m.taken?"✓":""}</button>
+                    </div>
+                  ))}
+                </div>
+              ))}
+              <div className="info">Meds reset each morning. Add times to get reminded. 💊</div>
+            </>
+          )}
+
+          {/* POMO */}
+          {tab==="pomo"&&(
+            <>
+              <div className="sec"><span className="sec-t">Pomodoro Timer</span><div className="sec-line"/></div>
+              <Pomodoro/>
+              <div className="sec" style={{marginTop:20}}><span className="sec-t">Focus Sounds</span><div className="sec-line"/></div>
+            <div className="sound-bar">
+              {[{id:'fan',e:'🌀',l:'Fan'},{id:'rain',e:'🌧',l:'Rain'},{id:'waves',e:'🌊',l:'Waves'},{id:'train',e:'🚂',l:'Train'}].map(s=>(
+                <div key={s.id} className={'s-btn'+(activeSound===s.id?' on':'')}
+                  onClick={()=>{toggleSound(s.id);setActiveSound(activeSound===s.id?null:s.id);}}>
+                  <span className="s-btn-ico">{s.e}</span>
+                  <span className="s-btn-lbl">{s.l}</span>
+                </div>
+              ))}
+            </div>
+            {activeSound&&(
+              <div style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',background:'var(--surface2)',borderRadius:8,marginBottom:10}}>
+                <span style={{fontSize:11,color:'var(--ink3)',fontWeight:600}}>Volume</span>
+                <input type="range" min="0" max="1" step="0.05" defaultValue="0.5"
+                  onChange={e=>{var v=parseFloat(e.target.value);_snodes.forEach(function(n){if(n&&n.gain&&typeof n.gain.value==='number')try{n.gain.value=v*0.6;}catch(ex){}});}}
+                  style={{flex:1,accentColor:'var(--accent)'}}/>
+                <button onClick={()=>{_stopAll();setActiveSound(null);}} style={{background:'none',border:'none',color:'var(--ink3)',cursor:'pointer',fontSize:16}}>Stop</button>
+              </div>
+            )}
+            <div className="info">25 min work · 5 min break · 4 rounds · 20 min long break.<br/>One task. One round. You can do this.</div>
+            </>
+          )}
+
+          {/* LOGBOOK */}
+          {tab==="logbook"&&(
+            <>
+              <div className="sec"><span className="sec-t">Completed</span><div className="sec-line"/></div>
+              {logbook.length===0&&<div className="empty"><div className="empty-i">✓</div><div className="empty-t">Complete tasks to fill your logbook</div></div>}
+              {logbook.map(l=>(
+                <div key={l.id} className="log-item">
+                  <div className="log-chk">✓</div>
+                  <span className="log-ttl">{l.title}</span>
+                  <span className="log-time">{l.time}</span>
+                </div>
+              ))}
+            </>
+          )}
+
+        </div>
+      </div>
+
+
+
+          {!onboarded&&pinState==='unlocked'&&(()=>{
+            const steps=[
+              {ico:'🧠',t:'Welcome to ORBIT',s:'Your personal ADHD companion, designed around how your brain actually works.',f:['Must, Should, Want priorities','Areas of life focus mode','Pulse 30s, quiet 5 mins']},
+              {ico:'🔒',t:'Your data is secure',s:'AES-256 encrypted with your PIN. Without it, all data is completely unreadable.',f:['PIN on every open','Bank-level AES-256','Google Drive sync']},
+              {ico:'⚡',t:'Built for ADHD',s:'Carry-over, streak protection, end-of-day review, relationship tracker.',f:['Habit streak warnings at 9pm','End-of-day planning','People tracker']},
+              {ico:'🚀',t:'You are ready!',s:'Add your most urgent task. One thing. That is all you need.',f:['Tasks + to add','Habits for daily habits','Pomo for focus music']},
+            ];
+            const s=steps[Math.min(onboardStep,steps.length-1)];
+            return(
+              <div className="onboard-ov">
+                <div className="ob-icon">{s.ico}</div>
+                <div className="ob-title">{s.t}</div>
+                <div className="ob-sub">{s.s}</div>
+                <div className="ob-features">{s.f.map((f,i)=><div key={i} className="ob-feat"><span style={{fontSize:16,flexShrink:0}}>&#10003;</span><span>{f}</span></div>)}</div>
+                <div className="ob-dots">{steps.map((_,i)=><div key={i} className={'ob-dot'+(i===onboardStep?' on':'')}/>)}</div>
+                <button className="ob-btn" onClick={()=>{
+                  if(onboardStep<steps.length-1)setOnboardStep(s=>s+1);
+                  else{setOnboarded(true);lss('orb_onboarded',true);}
+                }}>{onboardStep<steps.length-1?'Next':'Lets go!'}</button>
+              </div>
+            );
+          })()}
+          {showSearch&&(
+            <div className="search-ov">
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
+                <input className="search-in" placeholder="Search tasks, notes, journal..." autoFocus
+                  value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}/>
+                <button onClick={()=>{setShowSearch(false);setSearchQuery('');}} style={{background:'none',border:'none',fontSize:22,cursor:'pointer',color:'var(--ink3)'}}>x</button>
+              </div>
+              {searchQuery.length>=2?(()=>{
+                const q=searchQuery.toLowerCase();
+                const tr=tasks.filter(t=>t.title.toLowerCase().includes(q));
+                const nr=notes.filter(n=>n.text.toLowerCase().includes(q));
+                const jr=journal.filter(j=>j.text.toLowerCase().includes(q));
+                if(!tr.length&&!nr.length&&!jr.length)
+                  return <div style={{textAlign:'center',padding:40,color:'var(--ink3)'}}>No results</div>;
+                return <div>
+                  {tr.map(t=><div key={t.id} className="s-result" onClick={()=>{setTab('tasks');setShowSearch(false);setSearchQuery('');}}>
+                    <div><div className="s-title">{t.title}</div><div className="s-type">Task - {t.priority}</div></div>
+                  </div>)}
+                  {nr.map(n=><div key={n.id} className="s-result" onClick={()=>{setTab('notes');setShowSearch(false);setSearchQuery('');}}>
+                    <div><div className="s-title">{n.text.slice(0,55)}</div><div className="s-type">Note</div></div>
+                  </div>)}
+                  {jr.map(j=><div key={j.id} className="s-result" onClick={()=>{setTab('journal');setShowSearch(false);setSearchQuery('');}}>
+                    <div><div className="s-title">{j.text.slice(0,55)}</div><div className="s-type">Journal - {j.date}</div></div>
+                  </div>)}
+                </div>;
+              })():<div style={{textAlign:'center',padding:40,color:'var(--ink3)'}}>Type 2+ chars to search</div>}
+            </div>
+          )}
+
+      {/* QUICK ADD */}
+      {showQA&&(
+        <div className="qa-panel">
+          <input className="qa-input" placeholder="What needs doing?" value={qpTitle} onChange={e=>setQpTitle(e.target.value)} autoFocus
+            onKeyDown={e=>{if(e.key==="Enter"&&qpTitle.trim())addTask();if(e.key==="Escape")setShowQA(false);}}/>
+          {speech.listening&&<div style={{fontSize:10,color:"var(--accent)",marginTop:-8,marginBottom:8,fontStyle:"italic"}}>🎤 Listening...</div>}
+          <div className="qa-row">
+            <select className="qa-sel" value={qpArea} onChange={e=>setQpArea(e.target.value)}>
+              {Object.entries(AREAS).map(([k,a2])=><option key={k} value={k}>{a2.icon} {a2.label}</option>)}
+            </select>
+            <select className="qa-sel" value={qpPrio} onChange={e=>setQpPrio(e.target.value)}>
+              <option value="must">Must</option><option value="should">Should</option><option value="want">Want</option><option value="later">Later</option>
+            </select>
+            <select className="qa-sel" value={qpMins} onChange={e=>setQpMins(e.target.value)}>
+              <option value="">⏱</option>
+              <option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="45">45m</option><option value="60">1h</option><option value="120">2h</option>
+            </select>
+            {speech.supported&&<button className={"mic-btn"+(speech.listening?" on":"")} onClick={speech.toggle}>{speech.listening?"🔴":"🎤"}</button>}
+            <button className="qa-add" onClick={addTask}>Add →</button>
+          </div>
+        </div>
+      )}
+
+      {/* FAB */}
+      <button className="global-fab" style={{background:showQA?"var(--surface3)":"var(--blue)",color:showQA?"var(--ink)":"#fff"}} onClick={()=>setShowQA(v=>!v)}>
+        {showQA?"×":"+"}
+      </button>
+
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
