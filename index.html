@@ -531,6 +531,8 @@ const S={
   onboarded:ls("orb_onboarded",false), onboardStep:0,
   recoveryEmail:ls("orb_recovery_email",""),
   isOnline:navigator.onLine,
+  showReminder:false,
+  nextReminder:Date.now()+30*60*1000,
   editingGoal:null,
   showMonthlyGoals:false,
   calDate:new Date(),
@@ -718,7 +720,7 @@ function saveJournal(){
 // GOOGLE DRIVE
 function gLogin(){
   if(!S.gClientId.trim()){S.gSetupStep=1;render();return;}
-  const redirect=encodeURIComponent(window.location.href.split("?")[0].split("#")[0]);
+  const redirect=encodeURIComponent(window.location.protocol+"//"+window.location.host);
   const scope=encodeURIComponent("https://www.googleapis.com/auth/drive.file");
   const url="https://accounts.google.com/o/oauth2/v2/auth?client_id="+S.gClientId.trim()+"&response_type=token&redirect_uri="+redirect+"&scope="+scope+"&prompt=select_account";
   const w=window.open(url,"gauth","width=520,height=640,scrollbars=yes");
@@ -745,6 +747,32 @@ async function gLoad(){
   }catch(e){S.gStatus="error";}
   S.gSyncing=false;setTimeout(()=>{S.gStatus="";render();},3000);render();
 }
+
+
+// Midnight med + habit reset
+setInterval(function(){
+  var n=new Date();
+  var key='orb_reset_'+n.toDateString();
+  if(n.getHours()===0&&n.getMinutes()===0&&!ls(key,false)){
+    S.meds=S.meds.map(function(m){return Object.assign({},m,{taken:false});});
+    S.habits=S.habits.map(function(h){return Object.assign({},h,{doneToday:false});});
+    lss(key,true);
+    saveAll();
+  }
+},60000);
+
+// 30-minute reminder check
+setInterval(function(){
+  if(Date.now()>=S.nextReminder&&S.pinState==="unlocked"){
+    var must=S.tasks.filter(function(t){return !t.done&&t.priority==="must";});
+    var should=S.tasks.filter(function(t){return !t.done&&t.priority==="should";});
+    if(must.length>0||should.length>0){
+      S.showReminder=true;
+      S.nextReminder=Date.now()+30*60*1000;
+      render();
+    }
+  }
+},60000);
 
 // Online/offline
 window.addEventListener("online",()=>{S.isOnline=true;render();});
@@ -1485,6 +1513,40 @@ function render(){
     ]),
     S.showSearch?renderSearch():null,
   ]);
+
+
+  // 30-MIN REMINDER POPUP
+  if(S.showReminder&&S.pinState==="unlocked"){
+    var must=S.tasks.filter(function(t){return !t.done&&t.priority==="must";});
+    var should=S.tasks.filter(function(t){return !t.done&&t.priority==="should";});
+    var want=S.tasks.filter(function(t){return !t.done&&t.priority==="want";});
+    var total=must.length+should.length+want.length;
+    var popupItems=[];
+    if(must.length>0){
+      popupItems.push(h("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:"1px",textTransform:"uppercase",color:"var(--red)",marginBottom:"6px",marginTop:"4px"}},"Must do"));
+      must.forEach(function(t){popupItems.push(h("div",{className:"remind-item"},[h("div",{className:"remind-item-dot",style:{background:"var(--red)"}}),h("span",{className:"remind-item-title"},t.title)]));});
+    }
+    if(should.length>0){
+      popupItems.push(h("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:"1px",textTransform:"uppercase",color:"#C9A84C",marginBottom:"6px",marginTop:"10px"}},"Should do"));
+      should.slice(0,4).forEach(function(t){popupItems.push(h("div",{className:"remind-item"},[h("div",{className:"remind-item-dot",style:{background:"#C9A84C"}}),h("span",{className:"remind-item-title"},t.title)]));});
+    }
+    var reminderEl=h("div",{className:"remind-overlay"},[
+      h("div",{className:"remind-modal"},[
+        h("div",{className:"remind-header"},[
+          h("div",null,[
+            h("div",{className:"remind-title"},["Time check ",h("span",{className:"remind-count"},total)]),
+            h("div",{className:"remind-sub"},new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})+" · Outstanding tasks"),
+          ]),
+        ]),
+        h("div",{className:"remind-body"},total===0?[h("div",{style:{textAlign:"center",padding:"20px",color:"var(--ink3)"}},"All clear! Nothing outstanding.")]:popupItems),
+        h("div",{className:"remind-footer"},[
+          h("button",{className:"remind-snooze",onclick:function(){S.showReminder=false;S.nextReminder=Date.now()+10*60*1000;render();}},"Snooze 10m"),
+          h("button",{className:"remind-dismiss",onclick:function(){S.showReminder=false;S.tab="tasks";S.nextReminder=Date.now()+30*60*1000;render();}},"Got it — lets go"),
+        ]),
+      ]),
+    ]);
+    wrapper.appendChild(reminderEl);
+  }
 
   app.innerHTML="";
   app.appendChild(wrapper);
