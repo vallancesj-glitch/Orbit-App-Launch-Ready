@@ -746,7 +746,7 @@ function renderHabits(){
         h("div",{className:"hc-days"},days.map((lbl,i)=>{
           const isT=i===6;const done=isT?h2.doneToday:(hist[i]===1);const missed=!done&&!isT&&hist[i]!==null;
           return h("div",{className:"hdc"},[
-            h("span",{className:"hdl"},lbl.slice(0,2)),
+            h("span",{className:"hdl"},i===6?"Today":lbl.slice(0,2)),
             h("div",{className:"hdot"+(isT?" today":"")+(missed?" missed":""),style:{background:done?h2.color:"transparent",border:"2px solid "+(done?"transparent":isT?h2.color+"55":"var(--line)"),color:done?"#fff":"transparent"},onclick:isT?e=>toggleHabit(h2.id,e.clientX,e.clientY):null},done?"✓":""),
           ]);
         })),
@@ -865,7 +865,16 @@ function renderPomo(){
         oninput:e=>{const v=parseFloat(e.target.value);_snodes.forEach(n=>{if(n&&n.gain&&typeof n.gain.value==="number")try{n.gain.value=v*0.6;}catch(ex){}});}}),
       h("button",{onclick:()=>{_stopAll();render();},style:{background:"none",border:"none",color:"var(--ink3)",cursor:"pointer",fontSize:"16px",flexShrink:"0"}},"⏹"),
     ]):null,
-    h("div",{className:"info"},"25 min · 5 min break · ×4 · 20 min long break. One task. One round."),
+    h("div",{className:"info"},"25 min · 5 min break · x4 · 20 min long break. One task. One round."),
+    h("div",{className:"sec",style:{marginTop:"16px"}},[h("span",{className:"sec-t"},"Listen on"),h("div",{className:"sec-l"})]),
+    h("div",{style:{display:"flex",gap:"8px",flexWrap:"wrap",marginBottom:"6px"}},[
+      h("a",{href:"https://open.spotify.com/track/2eSMfBEPFcDHMfDkNaRkGU",target:"_blank",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",padding:"9px 14px",borderRadius:"8px",background:"#1DB954",color:"#fff",textDecoration:"none",fontSize:"11px",fontWeight:"600",flex:"1"}},"Spotify — Heat"),
+      h("a",{href:"https://www.youtube.com/watch?v=XFX0BRtk2U4",target:"_blank",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",padding:"9px 14px",borderRadius:"8px",background:"#FF0000",color:"#fff",textDecoration:"none",fontSize:"11px",fontWeight:"600",flex:"1"}},"YouTube — Heat"),
+    ]),
+    h("div",{style:{display:"flex",gap:"8px",flexWrap:"wrap"}},[
+      h("a",{href:"https://open.spotify.com/playlist/37i9dQZF1DX3PFzdbtx1Us",target:"_blank",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",padding:"9px 14px",borderRadius:"8px",background:"#1DB954",color:"#fff",textDecoration:"none",fontSize:"11px",fontWeight:"600",flex:"1"}},"Spotify — Deep Focus"),
+      h("a",{href:"https://www.youtube.com/results?search_query=ALIEN+WORLDS+ambience",target:"_blank",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",padding:"9px 14px",borderRadius:"8px",background:"#FF0000",color:"#fff",textDecoration:"none",fontSize:"11px",fontWeight:"600",flex:"1"}},"YouTube — ALIEN WORLDS"),
+    ]),
   ]);
 }
 
