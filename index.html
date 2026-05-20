@@ -619,7 +619,9 @@ function renderSidebar(){
     }),
     h("div",{style:{flex:"1"}}),
     h("div",{style:{padding:"8px 10px"}},[
-      h("div",{className:"sbi"+(S.tab==="pomo"?" on":""),onclick:()=>{S.tab="pomo";S.sidebarOpen=false;render();}},"🍅 Pomodoro"),
+      h("div",{className:"sbi"+(S.tab==="goals"?" on":""),onclick:()=>{S.tab="goals";S.sidebarOpen=false;render();}},"🎯 Goals"),
+        h("div",{className:"sbi"+(S.tab==="calendar"?" on":""),onclick:()=>{S.tab="calendar";S.sidebarOpen=false;render();}},"📅 Calendar"),
+        h("div",{className:"sbi"+(S.tab==="pomo"?" on":""),onclick:()=>{S.tab="pomo";S.sidebarOpen=false;render();}},"🍅 Pomodoro"),
       h("div",{className:"sbi"+(S.tab==="review"?" on":""),onclick:()=>{S.tab="review";S.sidebarOpen=false;render();}},"🌇 End of Day"),
       h("div",{className:"sbi"+(S.tab==="sync"?" on":""),onclick:()=>{S.tab="sync";S.sidebarOpen=false;render();}},"☁️ Sync & Security"),
       h("div",{className:"sbi"+(S.tab==="meds"?" on":""),onclick:()=>{S.tab="meds";S.sidebarOpen=false;render();}},"💊 Medications"),
