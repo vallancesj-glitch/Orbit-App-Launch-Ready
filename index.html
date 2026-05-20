@@ -815,8 +815,7 @@ function renderSidebar(){
   const overdue=S.people.filter(p=>od(p)>0).length;
   return h("div",{className:"sb"+(S.sidebarOpen?" open":""),id:"sidebar"},[
     h("div",{className:"sb-head",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},[
-      h("div",{className:"logo",style:{display:"flex",alignItems:"center",gap:"4px"}},["OR",h("span",{style:{color:"var(--accent)"}},"BIT")," 🌍"])
-      ),
+      h("div",{className:"logo",style:{display:"flex",alignItems:"center",gap:"4px"}},["OR",h("span",{style:{color:"var(--accent)"}},"BIT")," 🌍"]),
       h("button",{
         onclick:()=>{S.dark=!S.dark;lss("orb_dark",S.dark);render();},
         title:S.dark?"Switch to light mode":"Switch to dark mode",
