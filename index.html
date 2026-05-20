@@ -288,10 +288,20 @@ body{background:var(--bg);font-family:system-ui,sans-serif;color:var(--ink);min-
 
 /* Desktop: sidebar always visible */
 .sb{transition:transform .25s;}
-@media(max-width:680px){
-  .sb{position:fixed;left:0;top:0;height:100%;z-index:300;transform:translateX(-100%);}
+@media(max-width:768px){
+  .sb{position:fixed;left:0;top:0;height:100%;z-index:300;transform:translateX(-100%);transition:transform .25s;width:240px;}
   .sb.open{transform:translateX(0);}
   .overlay-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:299;}
+  .hamburger{display:flex!important;}
+  .mobile-logo{display:flex!important;}
+  .tbar{padding:0 6px;height:54px;}
+  .ttab{padding:6px 8px;font-size:12px;}
+  .content{padding:12px;}
+  .trow{padding:12px 10px;}
+  .ttl{font-size:14px;}
+  .tchk{width:24px;height:24px;}
+  .carry-btn{font-size:12px;padding:7px 12px;border-radius:8px;}
+  .chip{font-size:10px;padding:3px 7px;}
 }
 </style>
 </head>
@@ -856,7 +866,7 @@ function renderTopbar(){
   const over=S.people.filter(p=>od(p)>0).length;
   const tabs=[{id:"tasks",l:"Tasks",n:todoCount},{id:"notes",l:"Notes",n:0},{id:"habits",l:"Habits",n:hdue},{id:"journal",l:"Journal",n:0},{id:"people",l:"People",n:over}];
   return h("div",{className:"tbar"},[h("div",{className:"mobile-logo",style:{display:"none",alignItems:"center",gap:"4px",marginRight:"6px",fontWeight:"800",fontSize:"16px",color:"var(--ink)",letterSpacing:"-1px"}},["OR",h("span",{style:{color:"var(--accent)"}},"BIT")," 🌍"]),
-    h("button",{className:"icon-btn hamburger",style:{width:"40px",height:"40px",fontSize:"22px",border:"1.5px solid var(--line)",borderRadius:"10px",flexShrink:"0"},onclick:()=>{S.sidebarOpen=!S.sidebarOpen;render();}},"≡"),
+    h("button",{className:"icon-btn hamburger",style:{width:"48px",height:"48px",fontSize:"26px",border:"2px solid var(--line)",borderRadius:"12px",flexShrink:"0",marginRight:"6px"},onclick:()=>{S.sidebarOpen=!S.sidebarOpen;render();}},"≡"),
     ...tabs.map(t=>h("button",{className:"ttab"+(S.tab===t.id?" on":""),onclick:()=>{S.tab=t.id;render();}},[
       t.l,t.n>0?h("span",{className:"tn"+(t.id==="people"?" r":"")},t.n):null
     ])),
