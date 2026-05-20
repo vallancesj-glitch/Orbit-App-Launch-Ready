@@ -31,14 +31,14 @@ body{background:var(--bg);font-family:system-ui,sans-serif;color:var(--ink);min-
 
 /* MAIN */
 .main{flex:1;display:flex;flex-direction:column;min-width:0;}
-.tbar{background:var(--bg);border-bottom:1px solid var(--line);padding:0 14px;display:flex;align-items:center;gap:3px;height:46px;flex-shrink:0;}
+.tbar{background:var(--bg);border-bottom:1px solid var(--line);padding:0 8px;display:flex;align-items:center;gap:2px;height:50px;flex-shrink:0;overflow-x:auto;scrollbar-width:none;}.tbar::-webkit-scrollbar{display:none;}
 .ttab{padding:6px 13px;border-radius:20px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:transparent;color:var(--ink3);transition:all .15s;}
 .ttab:hover{background:var(--surface2);}
 .ttab.on{background:var(--blue);color:#fff;}
 .tn{font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;background:rgba(255,255,255,.25);}
 .tn.r{background:var(--red);}
 .tbar-r{margin-left:auto;display:flex;align-items:center;gap:6px;}
-.icon-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--surface2);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;color:var(--ink3);}
+.icon-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface2);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;color:var(--ink3);flex-shrink:0;}
 
 /* CONTENT */
 .content{flex:1;overflow-y:auto;padding:16px 20px;}
@@ -855,8 +855,8 @@ function renderTopbar(){
   const hdue=S.habits.filter(h=>!h.doneToday).length;
   const over=S.people.filter(p=>od(p)>0).length;
   const tabs=[{id:"tasks",l:"Tasks",n:todoCount},{id:"notes",l:"Notes",n:0},{id:"habits",l:"Habits",n:hdue},{id:"journal",l:"Journal",n:0},{id:"people",l:"People",n:over}];
-  return h("div",{className:"tbar"},[
-    h("button",{className:"icon-btn hamburger",onclick:()=>{S.sidebarOpen=!S.sidebarOpen;render();}},"≡"),
+  return h("div",{className:"tbar"},[h("div",{className:"mobile-logo",style:{display:"none",alignItems:"center",gap:"4px",marginRight:"6px",fontWeight:"800",fontSize:"16px",color:"var(--ink)",letterSpacing:"-1px"}},["OR",h("span",{style:{color:"var(--accent)"}},"BIT")," 🌍"]),
+    h("button",{className:"icon-btn hamburger",style:{width:"40px",height:"40px",fontSize:"22px",border:"1.5px solid var(--line)",borderRadius:"10px",flexShrink:"0"},onclick:()=>{S.sidebarOpen=!S.sidebarOpen;render();}},"≡"),
     ...tabs.map(t=>h("button",{className:"ttab"+(S.tab===t.id?" on":""),onclick:()=>{S.tab=t.id;render();}},[
       t.l,t.n>0?h("span",{className:"tn"+(t.id==="people"?" r":"")},t.n):null
     ])),
